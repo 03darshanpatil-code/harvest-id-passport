@@ -10,13 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivitiesRouteImport } from './routes/activities'
+import { Route as PassportsRouteImport } from './routes/passports'
 import { Route as CropsIndexRouteImport } from './routes/crops.index'
 import { Route as CropsCropIdRouteImport } from './routes/crops.$cropId'
 import { Route as CropsNewRouteImport } from './routes/crops.new'
+import { Route as PassportCropIdRouteImport } from './routes/passport.$cropId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivitiesRoute = ActivitiesRouteImport.update({
+  id: '/activities',
+  path: '/activities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PassportsRoute = PassportsRouteImport.update({
+  id: '/passports',
+  path: '/passports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CropsIndexRoute = CropsIndexRouteImport.update({
@@ -34,38 +47,77 @@ const CropsNewRoute = CropsNewRouteImport.update({
   path: '/crops/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PassportCropIdRoute = PassportCropIdRouteImport.update({
+  id: '/passport/$cropId',
+  path: '/passport/$cropId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activities': typeof ActivitiesRoute
+  '/passports': typeof PassportsRoute
   '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
+  '/passport/$cropId': typeof PassportCropIdRoute
   '/crops/': typeof CropsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activities': typeof ActivitiesRoute
+  '/passports': typeof PassportsRoute
   '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
+  '/passport/$cropId': typeof PassportCropIdRoute
   '/crops': typeof CropsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activities': typeof ActivitiesRoute
+  '/passports': typeof PassportsRoute
   '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
+  '/passport/$cropId': typeof PassportCropIdRoute
   '/crops/': typeof CropsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/crops/$cropId' | '/crops/new' | '/crops/'
+  fullPaths:
+    | '/'
+    | '/activities'
+    | '/passports'
+    | '/crops/$cropId'
+    | '/crops/new'
+    | '/passport/$cropId'
+    | '/crops/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/crops/$cropId' | '/crops/new' | '/crops'
-  id: '__root__' | '/' | '/crops/$cropId' | '/crops/new' | '/crops/'
+  to:
+    | '/'
+    | '/activities'
+    | '/passports'
+    | '/crops/$cropId'
+    | '/crops/new'
+    | '/passport/$cropId'
+    | '/crops'
+  id:
+    | '__root__'
+    | '/'
+    | '/activities'
+    | '/passports'
+    | '/crops/$cropId'
+    | '/crops/new'
+    | '/passport/$cropId'
+    | '/crops/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivitiesRoute: typeof ActivitiesRoute
+  PassportsRoute: typeof PassportsRoute
   CropsCropIdRoute: typeof CropsCropIdRoute
   CropsNewRoute: typeof CropsNewRoute
+  PassportCropIdRoute: typeof PassportCropIdRoute
   CropsIndexRoute: typeof CropsIndexRoute
 }
 
@@ -76,6 +128,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activities': {
+      id: '/activities'
+      path: '/activities'
+      fullPath: '/activities'
+      preLoaderRoute: typeof ActivitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/passports': {
+      id: '/passports'
+      path: '/passports'
+      fullPath: '/passports'
+      preLoaderRoute: typeof PassportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/crops/': {
@@ -99,13 +165,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CropsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/passport/$cropId': {
+      id: '/passport/$cropId'
+      path: '/passport/$cropId'
+      fullPath: '/passport/$cropId'
+      preLoaderRoute: typeof PassportCropIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivitiesRoute: ActivitiesRoute,
+  PassportsRoute: PassportsRoute,
   CropsCropIdRoute: CropsCropIdRoute,
   CropsNewRoute: CropsNewRoute,
+  PassportCropIdRoute: PassportCropIdRoute,
   CropsIndexRoute: CropsIndexRoute,
 }
 export const routeTree = rootRouteImport
