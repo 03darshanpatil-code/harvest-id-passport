@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CropsIndexRouteImport } from './routes/crops.index'
+import { Route as CropsCropIdRouteImport } from './routes/crops.$cropId'
 import { Route as CropsNewRouteImport } from './routes/crops.new'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const CropsIndexRoute = CropsIndexRouteImport.update({
   path: '/crops/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CropsCropIdRoute = CropsCropIdRouteImport.update({
+  id: '/crops/$cropId',
+  path: '/crops/$cropId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CropsNewRoute = CropsNewRouteImport.update({
   id: '/crops/new',
   path: '/crops/new',
@@ -31,30 +37,34 @@ const CropsNewRoute = CropsNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
   '/crops/': typeof CropsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
   '/crops': typeof CropsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
   '/crops/': typeof CropsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/crops/new' | '/crops/'
+  fullPaths: '/' | '/crops/$cropId' | '/crops/new' | '/crops/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/crops/new' | '/crops'
-  id: '__root__' | '/' | '/crops/new' | '/crops/'
+  to: '/' | '/crops/$cropId' | '/crops/new' | '/crops'
+  id: '__root__' | '/' | '/crops/$cropId' | '/crops/new' | '/crops/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CropsCropIdRoute: typeof CropsCropIdRoute
   CropsNewRoute: typeof CropsNewRoute
   CropsIndexRoute: typeof CropsIndexRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CropsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/crops/$cropId': {
+      id: '/crops/$cropId'
+      path: '/crops/$cropId'
+      fullPath: '/crops/$cropId'
+      preLoaderRoute: typeof CropsCropIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/crops/new': {
       id: '/crops/new'
       path: '/crops/new'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CropsCropIdRoute: CropsCropIdRoute,
   CropsNewRoute: CropsNewRoute,
   CropsIndexRoute: CropsIndexRoute,
 }
