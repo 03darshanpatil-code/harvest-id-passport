@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivitiesRouteImport } from './routes/activities'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as PassportsRouteImport } from './routes/passports'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as CropsIndexRouteImport } from './routes/crops.index'
 import { Route as CropsCropIdRouteImport } from './routes/crops.$cropId'
 import { Route as CropsNewRouteImport } from './routes/crops.new'
@@ -27,9 +29,19 @@ const ActivitiesRoute = ActivitiesRouteImport.update({
   path: '/activities',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PassportsRoute = PassportsRouteImport.update({
   id: '/passports',
   path: '/passports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CropsIndexRoute = CropsIndexRouteImport.update({
@@ -56,7 +68,9 @@ const PassportCropIdRoute = PassportCropIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activities': typeof ActivitiesRoute
+  '/analytics': typeof AnalyticsRoute
   '/passports': typeof PassportsRoute
+  '/settings': typeof SettingsRoute
   '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
   '/passport/$cropId': typeof PassportCropIdRoute
@@ -65,7 +79,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activities': typeof ActivitiesRoute
+  '/analytics': typeof AnalyticsRoute
   '/passports': typeof PassportsRoute
+  '/settings': typeof SettingsRoute
   '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
   '/passport/$cropId': typeof PassportCropIdRoute
@@ -75,7 +91,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/activities': typeof ActivitiesRoute
+  '/analytics': typeof AnalyticsRoute
   '/passports': typeof PassportsRoute
+  '/settings': typeof SettingsRoute
   '/crops/$cropId': typeof CropsCropIdRoute
   '/crops/new': typeof CropsNewRoute
   '/passport/$cropId': typeof PassportCropIdRoute
@@ -86,7 +104,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/activities'
+    | '/analytics'
     | '/passports'
+    | '/settings'
     | '/crops/$cropId'
     | '/crops/new'
     | '/passport/$cropId'
@@ -95,7 +115,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/activities'
+    | '/analytics'
     | '/passports'
+    | '/settings'
     | '/crops/$cropId'
     | '/crops/new'
     | '/passport/$cropId'
@@ -104,7 +126,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/activities'
+    | '/analytics'
     | '/passports'
+    | '/settings'
     | '/crops/$cropId'
     | '/crops/new'
     | '/passport/$cropId'
@@ -114,7 +138,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivitiesRoute: typeof ActivitiesRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   PassportsRoute: typeof PassportsRoute
+  SettingsRoute: typeof SettingsRoute
   CropsCropIdRoute: typeof CropsCropIdRoute
   CropsNewRoute: typeof CropsNewRoute
   PassportCropIdRoute: typeof PassportCropIdRoute
@@ -137,11 +163,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ActivitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/passports': {
       id: '/passports'
       path: '/passports'
       fullPath: '/passports'
       preLoaderRoute: typeof PassportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/crops/': {
@@ -178,7 +218,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivitiesRoute: ActivitiesRoute,
+  AnalyticsRoute: AnalyticsRoute,
   PassportsRoute: PassportsRoute,
+  SettingsRoute: SettingsRoute,
   CropsCropIdRoute: CropsCropIdRoute,
   CropsNewRoute: CropsNewRoute,
   PassportCropIdRoute: PassportCropIdRoute,
