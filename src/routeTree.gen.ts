@@ -10,33 +10,141 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivitiesRouteImport } from './routes/activities'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as PassportsRouteImport } from './routes/passports'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as CropsIndexRouteImport } from './routes/crops.index'
+import { Route as CropsCropIdRouteImport } from './routes/crops.$cropId'
+import { Route as CropsNewRouteImport } from './routes/crops.new'
+import { Route as PassportCropIdRouteImport } from './routes/passport.$cropId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivitiesRoute = ActivitiesRouteImport.update({
+  id: '/activities',
+  path: '/activities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PassportsRoute = PassportsRouteImport.update({
+  id: '/passports',
+  path: '/passports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CropsIndexRoute = CropsIndexRouteImport.update({
+  id: '/crops/',
+  path: '/crops/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CropsCropIdRoute = CropsCropIdRouteImport.update({
+  id: '/crops/$cropId',
+  path: '/crops/$cropId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CropsNewRoute = CropsNewRouteImport.update({
+  id: '/crops/new',
+  path: '/crops/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PassportCropIdRoute = PassportCropIdRouteImport.update({
+  id: '/passport/$cropId',
+  path: '/passport/$cropId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activities': typeof ActivitiesRoute
+  '/analytics': typeof AnalyticsRoute
+  '/passports': typeof PassportsRoute
+  '/settings': typeof SettingsRoute
+  '/crops/$cropId': typeof CropsCropIdRoute
+  '/crops/new': typeof CropsNewRoute
+  '/passport/$cropId': typeof PassportCropIdRoute
+  '/crops/': typeof CropsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activities': typeof ActivitiesRoute
+  '/analytics': typeof AnalyticsRoute
+  '/passports': typeof PassportsRoute
+  '/settings': typeof SettingsRoute
+  '/crops/$cropId': typeof CropsCropIdRoute
+  '/crops/new': typeof CropsNewRoute
+  '/passport/$cropId': typeof PassportCropIdRoute
+  '/crops': typeof CropsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activities': typeof ActivitiesRoute
+  '/analytics': typeof AnalyticsRoute
+  '/passports': typeof PassportsRoute
+  '/settings': typeof SettingsRoute
+  '/crops/$cropId': typeof CropsCropIdRoute
+  '/crops/new': typeof CropsNewRoute
+  '/passport/$cropId': typeof PassportCropIdRoute
+  '/crops/': typeof CropsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/activities'
+    | '/analytics'
+    | '/passports'
+    | '/settings'
+    | '/crops/$cropId'
+    | '/crops/new'
+    | '/passport/$cropId'
+    | '/crops/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/activities'
+    | '/analytics'
+    | '/passports'
+    | '/settings'
+    | '/crops/$cropId'
+    | '/crops/new'
+    | '/passport/$cropId'
+    | '/crops'
+  id:
+    | '__root__'
+    | '/'
+    | '/activities'
+    | '/analytics'
+    | '/passports'
+    | '/settings'
+    | '/crops/$cropId'
+    | '/crops/new'
+    | '/passport/$cropId'
+    | '/crops/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivitiesRoute: typeof ActivitiesRoute
+  AnalyticsRoute: typeof AnalyticsRoute
+  PassportsRoute: typeof PassportsRoute
+  SettingsRoute: typeof SettingsRoute
+  CropsCropIdRoute: typeof CropsCropIdRoute
+  CropsNewRoute: typeof CropsNewRoute
+  PassportCropIdRoute: typeof PassportCropIdRoute
+  CropsIndexRoute: typeof CropsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +156,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activities': {
+      id: '/activities'
+      path: '/activities'
+      fullPath: '/activities'
+      preLoaderRoute: typeof ActivitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/passports': {
+      id: '/passports'
+      path: '/passports'
+      fullPath: '/passports'
+      preLoaderRoute: typeof PassportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crops/': {
+      id: '/crops/'
+      path: '/crops'
+      fullPath: '/crops/'
+      preLoaderRoute: typeof CropsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crops/$cropId': {
+      id: '/crops/$cropId'
+      path: '/crops/$cropId'
+      fullPath: '/crops/$cropId'
+      preLoaderRoute: typeof CropsCropIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crops/new': {
+      id: '/crops/new'
+      path: '/crops/new'
+      fullPath: '/crops/new'
+      preLoaderRoute: typeof CropsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/passport/$cropId': {
+      id: '/passport/$cropId'
+      path: '/passport/$cropId'
+      fullPath: '/passport/$cropId'
+      preLoaderRoute: typeof PassportCropIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivitiesRoute: ActivitiesRoute,
+  AnalyticsRoute: AnalyticsRoute,
+  PassportsRoute: PassportsRoute,
+  SettingsRoute: SettingsRoute,
+  CropsCropIdRoute: CropsCropIdRoute,
+  CropsNewRoute: CropsNewRoute,
+  PassportCropIdRoute: PassportCropIdRoute,
+  CropsIndexRoute: CropsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
