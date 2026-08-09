@@ -17,6 +17,7 @@ import {
 import { type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useHarvest } from "@/lib/harvest-store";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: Home },
@@ -55,6 +56,7 @@ export function AppLayout({
   subtitle?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { profile } = useHarvest();
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
 
   return (
@@ -127,7 +129,11 @@ export function AppLayout({
                 aria-label="Profile"
                 className="grid size-10 place-items-center rounded-full bg-secondary font-display text-sm font-semibold text-secondary-foreground"
               >
-                RK
+                {profile.fullName
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("") || "RK"}
               </Link>
             </div>
           </div>

@@ -10,6 +10,7 @@ import {
 import tomato from "@/assets/crop-tomato.jpg";
 import wheat from "@/assets/crop-wheat.jpg";
 import chili from "@/assets/crop-chili.jpg";
+import { resolveCropImage, buildPassportUrl, parseCropIdFromQr } from "@/lib/crop-images";
 
 export type ActivityKind =
   | "sowing"
@@ -84,6 +85,19 @@ function getFallbackImage(name = "") {
   return chili;
 }
 
+export type FarmerProfile = {
+  fullName: string;
+  farmName: string;
+  phone: string;
+  email: string;
+  location: string;
+  preferences: {
+    reminders: boolean;
+    aiFormatting: boolean;
+    publicSharing: boolean;
+  };
+};
+
 function normalizeStage(status?: string): Crop["stage"] {
   const value = (status || "").toLowerCase();
   if (value.includes("flower")) return "Flowering";
@@ -95,7 +109,9 @@ function normalizeStage(status?: string): Crop["stage"] {
 
 function normalizeCrop(row: CropApiRow): Crop {
   const name = String(row.crop_name || row.name || "");
-  const image = typeof row.image === "string" && row.image.trim() ? row.image : getFallbackImage(name);
+  const image = typeof row.image === "string" && row.image.trim()
+    ? row.image
+    : resolveCropImage(name, String(row.variety || ""), String(row.category || ""), getFallbackImage(name));
 
   return {
     id: String(row.id ?? ""),
@@ -209,7 +225,12 @@ type Store = {
   activities: Activity[];
   loading: boolean;
   error: string | null;
+  profile: FarmerProfile;
+  profileLoading: boolean;
+  profileError: string | null;
   refreshData: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  saveProfile: (updates: Partial<FarmerProfile>) => Promise<FarmerProfile>;
   addCrop: (crop: CropDraft) => Promise<Crop>;
   updateCrop: (cropId: string, updates: Partial<Crop> & Record<string, unknown>) => Promise<Crop | null>;
   deleteCrop: (cropId: string) => Promise<void>;
@@ -224,6 +245,16 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<FarmerProfile>({
+    fullName: "Ramesh Kumar",
+    farmName: "Green Valley Farms",
+    phone: "+91 98450 00000",
+    email: "ramesh@greenvalley.in",
+    location: "Bengaluru, Karnataka",
+    preferences: { reminders: true, aiFormatting: true, publicSharing: true },
+  });
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const refreshData = useCallback(async () => {
     setLoading(true);
@@ -242,14 +273,51 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const response = await apiRequest<ApiEnvelope<FarmerProfile>>("/api/profile");
+      if (response.data) setProfile(response.data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to load profile";
+      setProfileError(message);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  const saveProfile = useCallback(async (updates) => {
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const response = await apiRequest<ApiEnvelope<FarmerProfile>>("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...profile, ...updates, preferences: { ...profile.preferences, ...(updates.preferences || {}) } }),
+      });
+      const nextProfile = response.data || { ...profile, ...updates };
+      setProfile(nextProfile);
+      return nextProfile;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to save profile";
+      setProfileError(message);
+      throw new Error(message);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, [profile]);
+
   useEffect(() => {
     void refreshData();
-  }, [refreshData]);
+    void refreshProfile();
+  }, [refreshData, refreshProfile]);
 
   const addCrop: Store["addCrop"] = useCallback(async (data) => {
     setError(null);
     try {
-      const response = await apiRequest<ApiEnvelope<CropApiRow | CropApiRow[]>>("/api/harvest", {
+      const payloadImage = data.image || resolveCropImage(data.name, data.variety, data.category, "");
+    const response = await apiRequest<ApiEnvelope<CropApiRow | CropApiRow[]>>("/api/harvest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -259,7 +327,7 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
           farmName: data.farmName,
           plantedOn: data.plantedOn,
           harvestOn: data.harvestOn,
-          image: data.image,
+          image: payloadImage,
         }),
       });
       const created = Array.isArray(response.data) ? response.data[0] : response.data;
@@ -353,14 +421,19 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
       activities,
       loading,
       error,
+      profile,
+      profileLoading,
+      profileError,
       refreshData,
+      refreshProfile,
+      saveProfile,
       addCrop,
       updateCrop,
       deleteCrop,
       addActivity,
       generatePassport,
     }),
-    [activities, addActivity, addCrop, crops, deleteCrop, error, generatePassport, loading, refreshData, updateCrop],
+    [activities, addActivity, addCrop, crops, deleteCrop, error, generatePassport, loading, profile, profileError, profileLoading, refreshData, refreshProfile, saveProfile, updateCrop],
   );
 
   return <HarvestContext.Provider value={value}>{children}</HarvestContext.Provider>;

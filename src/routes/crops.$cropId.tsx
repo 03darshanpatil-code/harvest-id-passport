@@ -11,9 +11,6 @@ import {
   User,
   Warehouse,
 } from "lucide-react";
-import tomato from "@/assets/crop-tomato.jpg";
-import wheat from "@/assets/crop-wheat.jpg";
-import chili from "@/assets/crop-chili.jpg";
 import { AppLayout } from "@/components/AppLayout";
 import { AddActivityDialog } from "@/components/AddActivityDialog";
 import { Timeline } from "@/components/Timeline";
@@ -23,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, useCrop } from "@/lib/harvest-store";
+import { resolveCropImage } from "@/lib/crop-images";
 
 export const Route = createFileRoute("/crops/$cropId")({
   head: () => ({
@@ -74,7 +72,7 @@ function CropDetails() {
           src={crop.image}
           alt={`${crop.variety} growing at ${crop.farmName}`}
           onError={(event) => {
-            event.currentTarget.src = crop.image.includes("crop-wheat") ? wheat : crop.image.includes("crop-tomato") ? tomato : chili;
+            event.currentTarget.src = resolveCropImage(crop.name, crop.variety, crop.category, "");
           }}
           width={1024}
           height={768}

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   FileText,
@@ -11,6 +12,7 @@ import {
   Wheat,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AppLayout } from "@/components/AppLayout";
 import { AddActivityDialog } from "@/components/AddActivityDialog";
 import { CropCard } from "@/components/CropCard";
@@ -39,7 +41,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const { crops, activities, error, loading } = useHarvest();
+  const { crops, activities, error, loading, profile } = useHarvest();
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannerMessage, setScannerMessage] = useState<string | null>(null);
+  const [scannerBusy, setScannerBusy] = useState(false);
   const recent = [...activities].sort((a, b) => +new Date(b.date) - +new Date(a.date)).slice(0, 4);
   const avg = Math.round(crops.reduce((s, c) => s + c.score, 0) / Math.max(crops.length, 1));
 
@@ -77,7 +82,7 @@ function Dashboard() {
               <Sparkles className="size-3" /> AI documentation active
             </Badge>
             <h2 className="mt-4 font-display text-3xl font-semibold sm:text-4xl">
-              Good morning, Ramesh 👋
+              Good morning, {profile.fullName.split(" ")[0] || "Farmer"} 👋
             </h2>
             <p className="mt-2 max-w-lg text-sm text-primary-foreground/85 sm:text-base">
               Let's grow with confidence. Every note you record today becomes verifiable proof for
@@ -186,7 +191,10 @@ function Dashboard() {
           size="lg"
           variant="outline"
           className="h-14 rounded-2xl"
-          onClick={() => toast("Camera opens on a mobile device", { description: "Scan any HarvestID QR to open a passport." })}
+          onClick={() => {
+            setScannerMessage(null);
+            setScannerOpen(true);
+          }}
         >
           <ScanLine className="size-5" /> Scan QR
         </Button>
@@ -207,6 +215,52 @@ function Dashboard() {
           ))}
         </div>
       </section>
+
+      <Dialog open={scannerOpen} onOpenChange={setScannerOpen}>
+        <DialogContent className="rounded-3xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">Scan HarvestID QR</DialogTitle>
+            <DialogDescription>
+              Point your camera at a passport QR to open the linked crop.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-muted-foreground">
+            {scannerBusy ? (
+              <p>Opening camera…</p>
+            ) : scannerMessage ? (
+              <p>{scannerMessage}</p>
+            ) : (
+              <p>Camera access is available on supported mobile and desktop browsers.</p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="flex-1 rounded-2xl"
+              onClick={async () => {
+                setScannerBusy(true);
+                setScannerMessage(null);
+                try {
+                  if (!navigator.mediaDevices?.getUserMedia) {
+                    throw new Error("Camera permission required");
+                  }
+                  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                  stream.getTracks().forEach((track) => track.stop());
+                  setScannerMessage("Camera access granted. Open the passport page on a phone or use the QR link directly.");
+                } catch {
+                  setScannerMessage("Camera permission required");
+                } finally {
+                  setScannerBusy(false);
+                }
+              }}
+            >
+              Start scan
+            </Button>
+            <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => setScannerOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <section className="mt-8 card-soft grid gap-4 p-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
         <span className="grid size-14 place-items-center rounded-2xl bg-secondary text-secondary-foreground">

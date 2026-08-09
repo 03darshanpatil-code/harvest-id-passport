@@ -1,11 +1,10 @@
-/**
- * Deterministic decorative QR-style code rendered from a crop id.
- * Used for the demo passport share flow.
- */
+import { buildPassportUrl } from "@/lib/crop-images";
+
 export function QrCode({ value, size = 168 }: { value: string; size?: number }) {
   const cells = 21;
+  const content = buildPassportUrl(value);
   let hash = 0;
-  for (let i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < content.length; i++) hash = (hash * 31 + content.charCodeAt(i)) >>> 0;
 
   const isFinder = (r: number, c: number) =>
     (r < 7 && c < 7) || (r < 7 && c > cells - 8) || (r > cells - 8 && c < 7);
@@ -23,14 +22,7 @@ export function QrCode({ value, size = 168 }: { value: string; size?: number }) 
   const finder = (r: number, c: number) => (
     <g key={`f${r}-${c}`}>
       <rect x={c} y={r} width={7} height={7} rx={1.6} fill="currentColor" />
-      <rect
-        x={c + 1}
-        y={r + 1}
-        width={5}
-        height={5}
-        rx={1.2}
-        fill="var(--color-card)"
-      />
+      <rect x={c + 1} y={r + 1} width={5} height={5} rx={1.2} fill="var(--color-card)" />
       <rect x={c + 2} y={r + 2} width={3} height={3} rx={0.8} fill="currentColor" />
     </g>
   );
@@ -41,7 +33,7 @@ export function QrCode({ value, size = 168 }: { value: string; size?: number }) 
       height={size}
       viewBox={`0 0 ${cells} ${cells}`}
       role="img"
-      aria-label={`QR code for passport ${value}`}
+      aria-label={`QR code for passport ${content}`}
       className="text-primary animate-in fade-in zoom-in-95 duration-500"
     >
       <rect width={cells} height={cells} fill="var(--color-card)" />

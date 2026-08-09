@@ -5,6 +5,7 @@ require("dotenv").config();
 const supabase = require("./config/supabase");
 const harvestRoutes = require("./routes/harvest");
 const activityRoutes = require("./routes/activities");
+const profileRoutes = require("./routes/profile");
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(express.json());
 
 app.use("/api/harvest", harvestRoutes);
 app.use("/api/activities", activityRoutes);
+app.use("/api/profile", profileRoutes);
 
 app.get("/", (req, res) => {
   res.json({ success: true, message: "Welcome to HarvestID API 🌱" });

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { useHarvest, type FarmerProfile } from "@/lib/harvest-store";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -23,46 +25,95 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const { profile, profileLoading, profileError, saveProfile, refreshProfile } = useHarvest();
+  const [form, setForm] = useState<FarmerProfile>(profile);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm(profile);
+  }, [profile]);
+
+  const updateField = (field: keyof FarmerProfile, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updatePreference = (key: "reminders" | "aiFormatting" | "publicSharing", value: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      preferences: { ...prev.preferences, [key]: value },
+    }));
+  };
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await saveProfile(form);
+      toast.success("Profile saved", { description: "Your profile changes are now visible across the app." });
+    } catch (err) {
+      toast.error("Could not save profile", {
+        description: err instanceof Error ? err.message : "Please try again in a moment.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <AppLayout title="Settings" subtitle="Profile & preferences">
       <div className="mx-auto max-w-2xl">
         <div className="card-soft flex items-center gap-4 p-6">
           <span className="grid size-16 shrink-0 place-items-center rounded-full bg-secondary font-display text-xl font-semibold text-secondary-foreground">
-            RK
+            {profile.fullName
+              .split(" ")
+              .slice(0, 2)
+              .map((part) => part[0])
+              .join("") || "RK"}
           </span>
           <div className="min-w-0">
-            <h2 className="truncate font-display text-xl font-semibold">Ramesh Kumar</h2>
+            <h2 className="truncate font-display text-xl font-semibold">{profile.fullName}</h2>
             <p className="truncate text-sm text-muted-foreground">
-              Green Valley Farms · Bengaluru, Karnataka
+              {profile.farmName} · {profile.location}
             </p>
           </div>
         </div>
 
+        {profileError ? (
+          <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {profileError}
+          </div>
+        ) : null}
+
         <div className="card-soft mt-5 p-6">
-          <h3 className="text-base font-semibold">Farmer profile</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-base font-semibold">Farmer profile</h3>
+            <Button variant="ghost" size="sm" onClick={() => void refreshProfile()}>
+              {profileLoading ? "Refreshing…" : "Refresh"}
+            </Button>
+          </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="p-name">Full name</Label>
-              <Input id="p-name" defaultValue="Ramesh Kumar" className="h-12 rounded-2xl" />
+              <Input id="p-name" value={form.fullName} onChange={(e) => updateField("fullName", e.target.value)} className="h-12 rounded-2xl" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="p-farm">Farm name</Label>
-              <Input id="p-farm" defaultValue="Green Valley Farms" className="h-12 rounded-2xl" />
+              <Input id="p-farm" value={form.farmName} onChange={(e) => updateField("farmName", e.target.value)} className="h-12 rounded-2xl" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="p-phone">Phone</Label>
-              <Input id="p-phone" defaultValue="+91 98450 00000" className="h-12 rounded-2xl" />
+              <Input id="p-phone" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} className="h-12 rounded-2xl" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="p-email">Email</Label>
-              <Input id="p-email" defaultValue="ramesh@greenvalley.in" className="h-12 rounded-2xl" />
+              <Input id="p-email" value={form.email} onChange={(e) => updateField("email", e.target.value)} className="h-12 rounded-2xl" />
+            </div>
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="p-location">Location</Label>
+              <Input id="p-location" value={form.location} onChange={(e) => updateField("location", e.target.value)} className="h-12 rounded-2xl" />
             </div>
           </div>
-          <Button
-            className="mt-5 h-12 rounded-2xl sm:px-8"
-            onClick={() => toast.success("Profile saved")}
-          >
-            Save changes
+          <Button className="mt-5 h-12 rounded-2xl sm:px-8" onClick={() => void submit()} disabled={saving}>
+            {saving ? "Saving…" : "Save changes"}
           </Button>
         </div>
 
@@ -70,9 +121,9 @@ function SettingsPage() {
           <h3 className="text-base font-semibold">Preferences</h3>
           <div className="mt-2">
             {[
-              { id: "s-remind", label: "Daily activity reminders", desc: "A nudge when a crop goes quiet." },
-              { id: "s-ai", label: "AI note formatting", desc: "Automatically clean up field notes." },
-              { id: "s-share", label: "Public passport sharing", desc: "Allow buyers to open QR links." },
+              { id: "s-remind", label: "Daily activity reminders", desc: "A nudge when a crop goes quiet.", key: "reminders" as const },
+              { id: "s-ai", label: "AI note formatting", desc: "Automatically clean up field notes.", key: "aiFormatting" as const },
+              { id: "s-share", label: "Public passport sharing", desc: "Allow buyers to open QR links.", key: "publicSharing" as const },
             ].map((row, i) => (
               <div key={row.id}>
                 {i > 0 ? <Separator /> : null}
@@ -83,7 +134,7 @@ function SettingsPage() {
                     </Label>
                     <p className="text-xs text-muted-foreground">{row.desc}</p>
                   </div>
-                  <Switch id={row.id} defaultChecked />
+                  <Switch id={row.id} checked={form.preferences[row.key]} onCheckedChange={(value) => updatePreference(row.key, value)} />
                 </div>
               </div>
             ))}

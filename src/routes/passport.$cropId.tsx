@@ -10,9 +10,6 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
-import tomato from "@/assets/crop-tomato.jpg";
-import wheat from "@/assets/crop-wheat.jpg";
-import chili from "@/assets/crop-chili.jpg";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +25,7 @@ import { QrCode } from "@/components/QrCode";
 import { Timeline } from "@/components/Timeline";
 import { ScoreRing } from "@/components/CropCard";
 import { formatDate, useCrop, useHarvest } from "@/lib/harvest-store";
+import { resolveCropImage } from "@/lib/crop-images";
 
 export const Route = createFileRoute("/passport/$cropId")({
   head: () => ({
@@ -91,7 +89,7 @@ function PassportPage() {
           src={crop.image}
           alt={`${crop.variety} from ${crop.farmName}`}
           onError={(event) => {
-            event.currentTarget.src = crop.image.includes("crop-wheat") ? wheat : crop.image.includes("crop-tomato") ? tomato : chili;
+            event.currentTarget.src = resolveCropImage(crop.name, crop.variety, crop.category, "");
           }}
           width={1024}
           height={768}
