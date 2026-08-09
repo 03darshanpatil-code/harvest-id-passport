@@ -21,7 +21,7 @@ export const Route = createFileRoute("/crops/")({
 });
 
 function CropsPage() {
-  const { crops } = useHarvest();
+  const { crops, loading, error } = useHarvest();
 
   return (
     <AppLayout title="My Crops" subtitle={`${crops.length} registered crops`}>
@@ -39,7 +39,17 @@ function CropsPage() {
         </Button>
       </div>
 
-      {crops.length === 0 ? (
+      {error ? (
+        <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+          Loading crops from the database…
+        </div>
+      ) : crops.length === 0 ? (
         <div className="card-soft mt-6 grid place-items-center gap-3 p-16 text-center">
           <span className="text-5xl">🌱</span>
           <p className="text-lg font-semibold">You haven't registered your first crop.</p>

@@ -43,7 +43,7 @@ function RegisterCrop() {
   const set = (key: keyof typeof initial) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !form.location.trim()) {
       toast.error("A crop name and location are needed", {
@@ -51,13 +51,20 @@ function RegisterCrop() {
       });
       return;
     }
-    const crop = addCrop({
-      ...form,
-      plantedOn: form.plantedOn || new Date().toISOString(),
-      harvestOn: form.harvestOn || new Date().toISOString(),
-    });
-    toast.success("Crop registered", { description: `${crop.name} now has ID ${crop.id}` });
-    navigate({ to: "/crops/$cropId", params: { cropId: crop.id } });
+
+    try {
+      const crop = await addCrop({
+        ...form,
+        plantedOn: form.plantedOn || new Date().toISOString(),
+        harvestOn: form.harvestOn || new Date().toISOString(),
+      });
+      toast.success("Crop registered", { description: `${crop.name} now has ID ${crop.id}` });
+      navigate({ to: "/crops/$cropId", params: { cropId: crop.id } });
+    } catch {
+      toast.error("Could not register crop", {
+        description: "Please check the backend connection and try again.",
+      });
+    }
   };
 
   return (

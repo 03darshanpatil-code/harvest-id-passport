@@ -10,6 +10,9 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import tomato from "@/assets/crop-tomato.jpg";
+import wheat from "@/assets/crop-wheat.jpg";
+import chili from "@/assets/crop-chili.jpg";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,7 +51,7 @@ export const Route = createFileRoute("/passport/$cropId")({
 function PassportPage() {
   const { cropId } = useParams({ from: "/passport/$cropId" });
   const { crop, timeline } = useCrop(cropId);
-  const { generatePassport } = useHarvest();
+  const { generatePassport, error } = useHarvest();
   const [generating, setGenerating] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
 
@@ -69,13 +72,16 @@ function PassportPage() {
     );
   }
 
-  const generate = () => {
+  const generate = async () => {
     setGenerating(true);
-    window.setTimeout(() => {
-      generatePassport(crop.id);
-      setGenerating(false);
+    try {
+      await generatePassport(crop.id);
       setCelebrate(true);
-    }, 1400);
+    } catch {
+      toast.error("Could not generate passport", { description: "Please try again shortly." });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -84,6 +90,9 @@ function PassportPage() {
         <img
           src={crop.image}
           alt={`${crop.variety} from ${crop.farmName}`}
+          onError={(event) => {
+            event.currentTarget.src = crop.image.includes("crop-wheat") ? wheat : crop.image.includes("crop-tomato") ? tomato : chili;
+          }}
           width={1024}
           height={768}
           className="h-56 w-full object-cover sm:h-72"
@@ -103,6 +112,11 @@ function PassportPage() {
       </header>
 
       <div className="mx-auto max-w-4xl px-4 sm:px-6">
+        {error ? (
+          <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {error}
+          </div>
+        ) : null}
         {!crop.passport ? (
           <section className="card-soft -mt-6 relative grid gap-4 p-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             {generating ? (

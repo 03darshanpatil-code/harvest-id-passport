@@ -20,7 +20,7 @@ export const Route = createFileRoute("/activities")({
 });
 
 function ActivitiesPage() {
-  const { activities, crops } = useHarvest();
+  const { activities, crops, loading, error } = useHarvest();
   const sorted = [...activities].sort((a, b) => +new Date(b.date) - +new Date(a.date));
 
   return (
@@ -29,6 +29,12 @@ function ActivitiesPage() {
       <p className="text-sm text-muted-foreground">
         Notes, photos and voice records from every crop, formatted by AI.
       </p>
+
+      {error ? (
+        <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
         {crops.map((c) => (
@@ -39,7 +45,13 @@ function ActivitiesPage() {
       </div>
 
       <div className="mt-6">
-        <Timeline items={sorted} />
+        {loading ? (
+          <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+            Loading activities…
+          </div>
+        ) : (
+          <Timeline items={sorted} />
+        )}
       </div>
     </AppLayout>
   );

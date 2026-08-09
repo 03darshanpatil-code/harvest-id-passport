@@ -39,7 +39,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const { crops, activities } = useHarvest();
+  const { crops, activities, error, loading } = useHarvest();
   const recent = [...activities].sort((a, b) => +new Date(b.date) - +new Date(a.date)).slice(0, 4);
   const avg = Math.round(crops.reduce((s, c) => s + c.score, 0) / Math.max(crops.length, 1));
 
@@ -66,6 +66,9 @@ function Dashboard() {
           alt="Aerial view of terraced green farmland"
           width={1600}
           height={900}
+          onError={(event) => {
+            event.currentTarget.src = hero;
+          }}
           className="absolute inset-0 size-full object-cover opacity-25"
         />
         <div className="relative grid gap-6 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -88,6 +91,18 @@ function Dashboard() {
           </div>
         </div>
       </section>
+
+      {error ? (
+        <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+          Loading farm data from the API…
+        </div>
+      ) : null}
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (

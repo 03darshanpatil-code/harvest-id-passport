@@ -1,4 +1,7 @@
 import { Sparkles, Mic, Image as ImageIcon } from "lucide-react";
+import tomato from "@/assets/crop-tomato.jpg";
+import wheat from "@/assets/crop-wheat.jpg";
+import chili from "@/assets/crop-chili.jpg";
 import { Badge } from "@/components/ui/badge";
 import { activityMeta, formatDate, formatTime, type Activity } from "@/lib/harvest-store";
 
@@ -51,6 +54,9 @@ export function Timeline({ items }: { items: Activity[] }) {
                 src={a.photo}
                 alt={`Field evidence for ${a.title}`}
                 loading="lazy"
+                onError={(event) => {
+                  event.currentTarget.src = a.photo?.includes("crop-wheat") ? wheat : a.photo?.includes("crop-tomato") ? tomato : chili;
+                }}
                 width={1024}
                 height={768}
                 className="mt-3 aspect-[16/9] w-full rounded-2xl object-cover"

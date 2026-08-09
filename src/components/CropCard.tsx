@@ -3,6 +3,9 @@ import { MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import tomato from "@/assets/crop-tomato.jpg";
+import wheat from "@/assets/crop-wheat.jpg";
+import chili from "@/assets/crop-chili.jpg";
 import type { Crop } from "@/lib/harvest-store";
 
 export function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
@@ -43,6 +46,9 @@ export function CropCard({ crop }: { crop: Crop }) {
           src={crop.image}
           alt={`${crop.variety} crop at ${crop.farmName}`}
           loading="lazy"
+          onError={(event) => {
+            event.currentTarget.src = crop.image.includes("crop-wheat") ? wheat : crop.image.includes("crop-tomato") ? tomato : chili;
+          }}
           width={1024}
           height={768}
           className="size-full object-cover transition-transform duration-500 group-hover:scale-105"

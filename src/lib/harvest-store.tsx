@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -26,7 +27,7 @@ export type Activity = {
   kind: ActivityKind;
   title: string;
   note: string;
-  date: string; // ISO
+  date: string;
   media: "photo" | "voice" | "text" | "mixed";
   aiEnhanced: boolean;
   aiSummary?: string;
@@ -52,201 +53,309 @@ export type Crop = {
   image: string;
 };
 
-const iso = (d: string) => new Date(d).toISOString();
+type CropDraft = Omit<Crop, "id" | "score" | "passport" | "image" | "stage"> & {
+  image?: string;
+  stage?: Crop["stage"];
+  score?: number;
+  passport?: boolean;
+};
 
-const seedCrops: Crop[] = [
-  {
-    id: "HID-TOM-2481",
-    name: "Tomato",
-    variety: "Cherry Tomato",
-    category: "Vegetable",
-    stage: "Growing",
-    farmer: "Ramesh Kumar",
-    farmName: "Green Valley Farms",
-    location: "Bengaluru, Karnataka",
-    gps: "12.9716° N, 77.5946° E",
-    area: "2.5 acres",
-    plantedOn: iso("2026-04-15"),
-    harvestOn: iso("2026-08-20"),
-    score: 96,
-    passport: true,
-    image: tomato,
-  },
-  {
-    id: "HID-WHT-1130",
-    name: "Wheat",
-    variety: "Sharbati",
-    category: "Cereal",
-    stage: "Harvest Ready",
-    farmer: "Ramesh Kumar",
-    farmName: "Green Valley Farms",
-    location: "Belagavi, Karnataka",
-    gps: "15.8497° N, 74.4977° E",
-    area: "6 acres",
-    plantedOn: iso("2026-02-02"),
-    harvestOn: iso("2026-08-05"),
-    score: 88,
-    passport: false,
-    image: wheat,
-  },
-  {
-    id: "HID-CHI-0774",
-    name: "Green Chili",
-    variety: "Byadgi",
-    category: "Spice",
-    stage: "Flowering",
-    farmer: "Ramesh Kumar",
-    farmName: "Sunrise Plot 3",
-    location: "Mysuru, Karnataka",
-    gps: "12.2958° N, 76.6394° E",
-    area: "1.2 acres",
-    plantedOn: iso("2026-05-10"),
-    harvestOn: iso("2026-09-12"),
-    score: 79,
-    passport: false,
-    image: chili,
-  },
-];
+type ApiEnvelope<T> = { success: boolean; data?: T; error?: string; message?: string };
 
-const seedActivities: Activity[] = [
-  {
-    id: "a1",
-    cropId: "HID-TOM-2481",
-    kind: "sowing",
-    title: "Seed Planted",
-    note: "Cherry tomato seedlings transplanted across 2.5 acres in raised beds.",
-    date: iso("2026-04-15T07:10:00"),
-    media: "text",
-    aiEnhanced: true,
-    aiSummary: "Transplanting completed on schedule with healthy nursery stock.",
-    confidence: 97,
-  },
-  {
-    id: "a2",
-    cropId: "HID-TOM-2481",
-    kind: "irrigation",
-    title: "Drip Irrigation",
-    note: "Drip lines run for 45 minutes, soil moisture verified at 60%.",
-    date: iso("2026-04-18T06:40:00"),
-    media: "voice",
-    aiEnhanced: true,
-    aiSummary: "Controlled irrigation cycle, moisture within optimum band.",
-    confidence: 94,
-  },
-  {
-    id: "a3",
-    cropId: "HID-TOM-2481",
-    kind: "photo",
-    title: "Crop Photo Uploaded",
-    note: "Field photo captured to document canopy development.",
-    date: iso("2026-05-22T17:05:00"),
-    media: "photo",
-    aiEnhanced: false,
-    photo: tomato,
-  },
-  {
-    id: "a4",
-    cropId: "HID-TOM-2481",
-    kind: "fertilizer",
-    title: "Fertilizer Application",
-    note: "Organic vermicompost applied at 2 tonnes per acre.",
-    date: iso("2026-05-25T08:30:00"),
-    media: "mixed",
-    aiEnhanced: true,
-    aiSummary: "Organic nutrition applied; no synthetic inputs recorded.",
-    confidence: 98,
-  },
-  {
-    id: "a5",
-    cropId: "HID-TOM-2481",
-    kind: "pest",
-    title: "Pest Inspection",
-    note: "Checked for leaf miner. Only trace activity, no spray required.",
-    date: iso("2026-07-02T09:15:00"),
-    media: "text",
-    aiEnhanced: true,
-    aiSummary: "Preventive scouting; pest pressure below action threshold.",
-    confidence: 91,
-  },
-  {
-    id: "a6",
-    cropId: "HID-TOM-2481",
-    kind: "flowering",
-    title: "Flowering Stage",
-    note: "Uniform flowering observed across all beds.",
-    date: iso("2026-07-20T07:50:00"),
-    media: "photo",
-    aiEnhanced: false,
-    photo: tomato,
-  },
-  {
-    id: "a7",
-    cropId: "HID-WHT-1130",
-    kind: "harvest",
-    title: "Pre-harvest Check",
-    note: "Grain moisture measured at 13.5%, ready for combine harvesting.",
-    date: iso("2026-07-28T11:00:00"),
-    media: "text",
-    aiEnhanced: true,
-    aiSummary: "Crop matured and within safe harvest moisture range.",
-    confidence: 95,
-    photo: wheat,
-  },
-  {
-    id: "a8",
-    cropId: "HID-CHI-0774",
-    kind: "weeding",
-    title: "Manual Weeding",
-    note: "Inter-row weeding completed by a team of four.",
-    date: iso("2026-07-30T08:00:00"),
-    media: "voice",
-    aiEnhanced: true,
-    aiSummary: "Mechanical weed control, no herbicide used.",
-    confidence: 89,
-  },
-];
+type CropApiRow = Record<string, unknown>;
+type ActivityApiRow = Record<string, unknown>;
+
+const API_BASE_URL = (() => {
+  const configured = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
+  if (configured) return configured;
+  if (import.meta.env.DEV) return "http://127.0.0.1:5000";
+  return "";
+})();
+
+function getFallbackImage(name = "") {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("wheat") || normalized.includes("grain")) return wheat;
+  if (normalized.includes("tom")) return tomato;
+  return chili;
+}
+
+function normalizeStage(status?: string): Crop["stage"] {
+  const value = (status || "").toLowerCase();
+  if (value.includes("flower")) return "Flowering";
+  if (value.includes("harvested")) return "Harvested";
+  if (value.includes("ready") || value.includes("harvest")) return "Harvest Ready";
+  if (value.includes("sow")) return "Sowing";
+  return "Growing";
+}
+
+function normalizeCrop(row: CropApiRow): Crop {
+  const name = String(row.crop_name || row.name || "");
+  const image = typeof row.image === "string" && row.image.trim() ? row.image : getFallbackImage(name);
+
+  return {
+    id: String(row.id ?? ""),
+    name,
+    variety: String(row.variety || ""),
+    category: String(row.category || "Vegetable"),
+    stage: normalizeStage(String(row.status || row.stage || "")),
+    farmer: String(row.farmer_name || row.farmer || ""),
+    farmName: String(row.farm_name || row.farmName || ""),
+    location: String(row.location || ""),
+    gps: String(row.gps || ""),
+    area: String(row.area || ""),
+    plantedOn: String(row.planting_date || row.plantedOn || row.planted_on || ""),
+    harvestOn: String(row.harvest_date || row.harvestOn || row.harvest_on || ""),
+    score: typeof row.score === "number" ? row.score : 70,
+    passport: Boolean(row.passport),
+    image,
+  };
+}
+
+function normalizeActivity(row: ActivityApiRow): Activity {
+  return {
+    id: String(row.id ?? ""),
+    cropId: String(row.crop_id || row.cropId || ""),
+    kind: (row.kind as ActivityKind) || "sowing",
+    title: String(row.title || "Field activity"),
+    note: String(row.note || ""),
+    date: String(row.date || row.created_at || new Date().toISOString()),
+    media: (row.media as Activity["media"]) || "text",
+    aiEnhanced: Boolean(row.ai_enhanced || row.aiEnhanced),
+    aiSummary: typeof row.ai_summary === "string" ? row.ai_summary : undefined,
+    confidence: typeof row.confidence === "number" ? row.confidence : undefined,
+    photo: typeof row.photo === "string" ? row.photo : undefined,
+  };
+}
+
+function sanitizePayload(payload: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+}
+
+async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      ...(init?.headers || {}),
+    },
+    ...init,
+  });
+
+  const text = await response.text();
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = text;
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" && payload && "error" in payload && typeof payload.error === "string"
+        ? payload.error
+        : typeof payload === "object" && payload && "message" in payload && typeof payload.message === "string"
+          ? payload.message
+          : "Request failed";
+    throw new Error(message);
+  }
+
+  return payload as T;
+}
+
+function buildHarvestPayload(data: Partial<Crop> & Record<string, unknown>) {
+  return sanitizePayload({
+    farmer_name: data.farmer,
+    crop_name: data.name,
+    location: data.location,
+    planting_date: data.plantedOn,
+    harvest_date: data.harvestOn,
+    status: data.stage,
+    variety: data.variety,
+    category: data.category,
+    farm_name: data.farmName,
+    gps: data.gps,
+    area: data.area,
+    score: data.score,
+    passport: data.passport,
+    image: data.image,
+    note: data.note,
+  });
+}
+
+function buildActivityPayload(data: Omit<Activity, "id">) {
+  return sanitizePayload({
+    crop_id: data.cropId,
+    kind: data.kind,
+    title: data.title,
+    note: data.note,
+    date: data.date,
+    media: data.media,
+    ai_enhanced: data.aiEnhanced,
+    ai_summary: data.aiSummary,
+    confidence: data.confidence,
+    photo: data.photo,
+  });
+}
 
 type Store = {
   crops: Crop[];
   activities: Activity[];
-  addCrop: (crop: Omit<Crop, "id" | "score" | "passport" | "image" | "stage">) => Crop;
-  addActivity: (activity: Omit<Activity, "id">) => void;
-  generatePassport: (cropId: string) => void;
+  loading: boolean;
+  error: string | null;
+  refreshData: () => Promise<void>;
+  addCrop: (crop: CropDraft) => Promise<Crop>;
+  updateCrop: (cropId: string, updates: Partial<Crop> & Record<string, unknown>) => Promise<Crop | null>;
+  deleteCrop: (cropId: string) => Promise<void>;
+  addActivity: (activity: Omit<Activity, "id">) => Promise<void>;
+  generatePassport: (cropId: string) => Promise<void>;
 };
 
 const HarvestContext = createContext<Store | null>(null);
 
 export function HarvestProvider({ children }: { children: ReactNode }) {
-  const [crops, setCrops] = useState<Crop[]>(seedCrops);
-  const [activities, setActivities] = useState<Activity[]>(seedActivities);
+  const [crops, setCrops] = useState<Crop[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const addCrop: Store["addCrop"] = useCallback((data) => {
-    const crop: Crop = {
-      ...data,
-      id: `HID-${data.name.slice(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 8999)}`,
-      stage: "Sowing",
-      score: 42,
-      passport: false,
-      image: chili,
-    };
-    setCrops((prev) => [crop, ...prev]);
-    return crop;
+  const refreshData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [cropPayload, activityPayload] = await Promise.all([
+        apiRequest<ApiEnvelope<CropApiRow[]>>("/api/harvest"),
+        apiRequest<ApiEnvelope<ActivityApiRow[]>>("/api/activities"),
+      ]);
+      setCrops((cropPayload.data || []).map(normalizeCrop));
+      setActivities((activityPayload.data || []).map(normalizeActivity));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load data");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const addActivity: Store["addActivity"] = useCallback((data) => {
-    setActivities((prev) => [{ ...data, id: crypto.randomUUID() }, ...prev]);
-    setCrops((prev) =>
-      prev.map((c) => (c.id === data.cropId ? { ...c, score: Math.min(99, c.score + 2) } : c)),
-    );
+  useEffect(() => {
+    void refreshData();
+  }, [refreshData]);
+
+  const addCrop: Store["addCrop"] = useCallback(async (data) => {
+    setError(null);
+    try {
+      const response = await apiRequest<ApiEnvelope<CropApiRow | CropApiRow[]>>("/api/harvest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          name: data.name,
+          farmer: data.farmer,
+          farmName: data.farmName,
+          plantedOn: data.plantedOn,
+          harvestOn: data.harvestOn,
+          image: data.image,
+        }),
+      });
+      const created = Array.isArray(response.data) ? response.data[0] : response.data;
+      const crop = normalizeCrop(created as CropApiRow);
+      setCrops((prev) => [crop, ...prev]);
+      return crop;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to save crop";
+      setError(message);
+      throw err;
+    }
   }, []);
 
-  const generatePassport: Store["generatePassport"] = useCallback((cropId) => {
-    setCrops((prev) => prev.map((c) => (c.id === cropId ? { ...c, passport: true } : c)));
+  const updateCrop: Store["updateCrop"] = useCallback(async (cropId, updates) => {
+    setError(null);
+    try {
+      const response = await apiRequest<ApiEnvelope<CropApiRow | CropApiRow[]>>(`/api/harvest/${cropId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildHarvestPayload(updates as Partial<Crop> & Record<string, unknown>)),
+      });
+      const updated = Array.isArray(response.data) ? response.data[0] : response.data;
+      if (!updated) return null;
+      const normalized = normalizeCrop(updated as CropApiRow);
+      setCrops((prev) => prev.map((crop) => (crop.id === cropId ? normalized : crop)));
+      return normalized;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to update crop";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const deleteCrop: Store["deleteCrop"] = useCallback(async (cropId) => {
+    setError(null);
+    try {
+      await apiRequest<ApiEnvelope<null>>(`/api/harvest/${cropId}`, { method: "DELETE" });
+      setCrops((prev) => prev.filter((crop) => crop.id !== cropId));
+      setActivities((prev) => prev.filter((activity) => activity.cropId !== cropId));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to delete crop";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const addActivity: Store["addActivity"] = useCallback(async (data) => {
+    setError(null);
+    try {
+      const response = await apiRequest<ApiEnvelope<ActivityApiRow | ActivityApiRow[]>>("/api/activities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildActivityPayload(data)),
+      });
+      const created = Array.isArray(response.data) ? response.data[0] : response.data;
+      if (!created) return;
+      const activity = normalizeActivity(created as ActivityApiRow);
+      setActivities((prev) => [activity, ...prev]);
+      setCrops((prev) =>
+        prev.map((crop) => (crop.id === activity.cropId ? { ...crop, score: Math.min(99, crop.score + 2) } : crop)),
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to save activity";
+      setError(message);
+      throw err;
+    }
+  }, []);
+
+  const generatePassport: Store["generatePassport"] = useCallback(async (cropId) => {
+    setError(null);
+    try {
+      const response = await apiRequest<ApiEnvelope<CropApiRow | CropApiRow[]>>(`/api/harvest/${cropId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passport: true }),
+      });
+      const updated = Array.isArray(response.data) ? response.data[0] : response.data;
+      if (!updated) return;
+      const normalized = normalizeCrop(updated as CropApiRow);
+      setCrops((prev) => prev.map((crop) => (crop.id === cropId ? normalized : crop)));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to generate passport";
+      setError(message);
+      throw err;
+    }
   }, []);
 
   const value = useMemo(
-    () => ({ crops, activities, addCrop, addActivity, generatePassport }),
-    [crops, activities, addCrop, addActivity, generatePassport],
+    () => ({
+      crops,
+      activities,
+      loading,
+      error,
+      refreshData,
+      addCrop,
+      updateCrop,
+      deleteCrop,
+      addActivity,
+      generatePassport,
+    }),
+    [activities, addActivity, addCrop, crops, deleteCrop, error, generatePassport, loading, refreshData, updateCrop],
   );
 
   return <HarvestContext.Provider value={value}>{children}</HarvestContext.Provider>;

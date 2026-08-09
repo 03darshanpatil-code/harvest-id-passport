@@ -38,8 +38,13 @@ const trend = [
 ];
 
 function AnalyticsPage() {
-  const { crops } = useHarvest();
+  const { crops, activities, loading, error } = useHarvest();
   const byCrop = crops.map((c) => ({ name: c.name, score: c.score }));
+  const trend = crops.length
+    ? [
+        { month: "Now", records: activities.length, score: Math.round(crops.reduce((sum, crop) => sum + crop.score, 0) / Math.max(crops.length, 1)) },
+      ]
+    : [];
 
   return (
     <AppLayout title="Analytics" subtitle="Documentation performance">
@@ -48,12 +53,18 @@ function AnalyticsPage() {
         Traceability improves as you record more field activity.
       </p>
 
+      {error ? (
+        <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <div className="card-soft p-5">
           <h3 className="text-base font-semibold">Traceability trend</h3>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trend}>
+              <LineChart data={loading && trend.length === 0 ? [{ month: "Loading", records: 0, score: 0 }] : trend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="month" stroke="var(--color-muted-foreground)" fontSize={12} />
                 <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />

@@ -68,26 +68,31 @@ export function AddActivityDialog({
     toast.success("Enhanced by AI", { description: "Note formatted and categorised." });
   };
 
-  const save = () => {
+  const save = async () => {
     if (!note.trim()) {
       toast.error("Nothing to save yet");
       return;
     }
-    addActivity({
-      cropId,
-      kind,
-      title: ai?.title ?? activityMeta[kind].label,
-      note: ai?.description ?? note.trim(),
-      date: new Date().toISOString(),
-      media,
-      aiEnhanced: Boolean(ai),
-      ...(ai ? { aiSummary: `${ai.category} · recorded by farmer`, confidence: ai.confidence } : {}),
-    });
-    toast.success("Activity recorded", { description: "Timeline and score updated." });
-    setNote("");
-    setAi(null);
-    setMedia("text");
-    setOpen(false);
+
+    try {
+      await addActivity({
+        cropId,
+        kind,
+        title: ai?.title ?? activityMeta[kind].label,
+        note: ai?.description ?? note.trim(),
+        date: new Date().toISOString(),
+        media,
+        aiEnhanced: Boolean(ai),
+        ...(ai ? { aiSummary: `${ai.category} · recorded by farmer`, confidence: ai.confidence } : {}),
+      });
+      toast.success("Activity recorded", { description: "Timeline and score updated." });
+      setNote("");
+      setAi(null);
+      setMedia("text");
+      setOpen(false);
+    } catch {
+      toast.error("Unable to save activity", { description: "Please try again in a moment." });
+    }
   };
 
   return (

@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1786256446071,
+    "crop_id": "8",
+    "kind": "sowing",
+    "title": "Sowing verified",
+    "note": "Seeded the crop today",
+    "date": "2026-08-09T06:20:46.053Z",
+    "media": "text",
+    "ai_enhanced": true,
+    "ai_summary": "Establishment · recorded by farmer",
+    "confidence": 97,
+    "photo": null,
+    "created_at": "2026-08-09T06:20:46.071Z"
+  },
+  {
+    "id": 1786256122912,
+    "crop_id": "8",
+    "kind": "irrigation",
+    "title": "Irrigation check",
+    "note": "Watered the field this morning",
+    "date": "2026-08-09T06:15:22.772Z",
+    "media": "text",
+    "ai_enhanced": true,
+    "ai_summary": "Water Management · recorded by farmer",
+    "confidence": 98,
+    "photo": null,
+    "created_at": "2026-08-09T06:15:22.912Z"
+  }
+]

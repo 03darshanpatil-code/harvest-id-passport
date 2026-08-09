@@ -11,6 +11,9 @@ import {
   User,
   Warehouse,
 } from "lucide-react";
+import tomato from "@/assets/crop-tomato.jpg";
+import wheat from "@/assets/crop-wheat.jpg";
+import chili from "@/assets/crop-chili.jpg";
 import { AppLayout } from "@/components/AppLayout";
 import { AddActivityDialog } from "@/components/AddActivityDialog";
 import { Timeline } from "@/components/Timeline";
@@ -70,6 +73,9 @@ function CropDetails() {
         <img
           src={crop.image}
           alt={`${crop.variety} growing at ${crop.farmName}`}
+          onError={(event) => {
+            event.currentTarget.src = crop.image.includes("crop-wheat") ? wheat : crop.image.includes("crop-tomato") ? tomato : chili;
+          }}
           width={1024}
           height={768}
           className="h-64 w-full object-cover sm:h-80"
