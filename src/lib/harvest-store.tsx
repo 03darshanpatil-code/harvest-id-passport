@@ -67,9 +67,14 @@ type ActivityApiRow = Record<string, unknown>;
 
 const API_BASE_URL = (() => {
   const configured = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
+
   if (configured) return configured;
-  if (import.meta.env.DEV) return "http://127.0.0.1:5000";
-  return "";
+
+  if (import.meta.env.DEV) {
+    return "http://127.0.0.1:5000";
+  }
+
+  return "https://harvest-id-backend.onrender.com";
 })();
 
 function getFallbackImage(name = "") {
