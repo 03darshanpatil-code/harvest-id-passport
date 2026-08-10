@@ -10,7 +10,10 @@ const profileRoutes = require("./routes/profile");
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+// Activities can carry base64 photo/audio data URLs (a 5 MB photo becomes
+// ~6.7 MB of base64). Express's default JSON limit (100kb) rejected those
+// with 413, which surfaced in production as "Unable to add activity".
+app.use(express.json({ limit: "10mb" }));
 
 app.use("/api/harvest", harvestRoutes);
 app.use("/api/activities", activityRoutes);
@@ -48,6 +51,18 @@ app.get("/add-test", async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// JSON error handler — Express's default handler returns HTML pages, but the
+// frontend needs JSON so it can surface the real reason (e.g. oversized body).
+app.use((err, req, res, next) => {
+  const isTooLarge = err?.type === "entity.too.large" || err?.status === 413;
+  res.status(isTooLarge ? 413 : err?.status || 500).json({
+    success: false,
+    error: isTooLarge
+      ? "Request body too large — keep photos under ~5 MB."
+      : err?.message || "Internal server error",
+  });
 });
 
 const PORT = process.env.PORT || 5000;
