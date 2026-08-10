@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
 import {
   ArrowRight,
   FileText,
@@ -12,13 +12,14 @@ import {
   Wheat,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AppLayout } from "@/components/AppLayout";
 import { AddActivityDialog } from "@/components/AddActivityDialog";
 import { CropCard } from "@/components/CropCard";
+import { QrScannerDialog } from "@/components/QrScannerDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { activityMeta, timeAgo, useHarvest } from "@/lib/harvest-store";
+import { parseCropIdFromQr } from "@/lib/crop-images";
 import hero from "@/assets/hero-farm.jpg";
 
 export const Route = createFileRoute("/")({
@@ -41,10 +42,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const { crops, activities, error, loading, profile } = useHarvest();
+  const { crops, activities, error, loading, profile, refreshData } = useHarvest();
+  const navigate = useNavigate();
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scannerMessage, setScannerMessage] = useState<string | null>(null);
-  const [scannerBusy, setScannerBusy] = useState(false);
   const recent = [...activities].sort((a, b) => +new Date(b.date) - +new Date(a.date)).slice(0, 4);
   const avg = Math.round(crops.reduce((s, c) => s + c.score, 0) / Math.max(crops.length, 1));
 
@@ -63,6 +63,45 @@ function Dashboard() {
     { label: "Avg. traceability", value: `${avg}%`, icon: Sparkles },
   ];
 
+  // Crop with the oldest (or missing) activity record — drives the AI card.
+  const stale = useMemo(() => {
+    if (!crops.length) return null;
+    const byCrop = crops.map((c) => ({
+      crop: c,
+      lastDate: activities
+        .filter((a) => a.cropId === c.id)
+        .sort((a, b) => +new Date(b.date) - +new Date(a.date))[0]?.date,
+    }));
+    byCrop.sort((a, b) => {
+      const ad = a.lastDate ? +new Date(a.lastDate) : 0;
+      const bd = b.lastDate ? +new Date(b.lastDate) : 0;
+      return ad - bd;
+    });
+    return byCrop[0] ?? null;
+  }, [crops, activities]);
+
+  const daysSince = (date?: string) => {
+    if (!date) return null;
+    const d = +new Date(date);
+    if (Number.isNaN(d)) return null;
+    return Math.max(0, Math.floor((Date.now() - d) / 86_400_000));
+  };
+
+  const handleScanned = useCallback(
+    (decodedText: string) => {
+      const cropId = parseCropIdFromQr(decodedText);
+      if (!cropId) {
+        toast.error("QR code not recognised", {
+          description: "This doesn't look like a HarvestID passport code.",
+        });
+        return;
+      }
+      setScannerOpen(false);
+      navigate({ to: "/passport/$cropId", params: { cropId } });
+    },
+    [navigate],
+  );
+
   return (
     <AppLayout title="Dashboard" subtitle="Your farm at a glance">
       <section className="relative overflow-hidden rounded-3xl glass-hero shadow-lift">
@@ -71,9 +110,6 @@ function Dashboard() {
           alt="Aerial view of terraced green farmland"
           width={1600}
           height={900}
-          onError={(event) => {
-            event.currentTarget.src = hero;
-          }}
           className="absolute inset-0 size-full object-cover opacity-25"
         />
         <div className="relative grid gap-6 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
@@ -98,8 +134,16 @@ function Dashboard() {
       </section>
 
       {error ? (
-        <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-          {error}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          <span className="min-w-0">{error}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 rounded-2xl"
+            onClick={() => void refreshData()}
+          >
+            Retry
+          </Button>
         </div>
       ) : null}
 
@@ -149,23 +193,41 @@ function Dashboard() {
           </ul>
         </div>
 
-        <div className="card-soft border-gold/40 bg-gold/10 p-5">
-          <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-            🤖 AI recommendation
-          </Badge>
-          <p className="mt-4 text-sm leading-relaxed">
-            Your <strong>Green Chili</strong> crop has not received an activity update for 6 days.
-            Record today's progress to keep the traceability score climbing.
-          </p>
-          <AddActivityDialog
-            cropId="HID-CHI-0774"
-            trigger={
-              <Button className="mt-4 w-full rounded-2xl">
-                <Plus className="size-4" /> Record now
-              </Button>
-            }
-          />
-        </div>
+        {stale ? (
+          <div className="card-soft border-gold/40 bg-gold/10 p-5">
+            <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
+              🤖 AI recommendation
+            </Badge>
+            <p className="mt-4 text-sm leading-relaxed">
+              {(() => {
+                const days = daysSince(stale.lastDate);
+                if (days === null) {
+                  return (
+                    <>
+                      Your <strong>{stale.crop.name}</strong> crop has no documented activity yet.
+                      Record the first field note to start building its passport.
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    Your <strong>{stale.crop.name}</strong> crop has not received an activity update
+                    for {days} day{days === 1 ? "" : "s"}. Record today's progress to keep the
+                    traceability score climbing.
+                  </>
+                );
+              })()}
+            </p>
+            <AddActivityDialog
+              cropId={stale.crop.id}
+              trigger={
+                <Button className="mt-4 w-full rounded-2xl">
+                  <Plus className="size-4" /> Record now
+                </Button>
+              }
+            />
+          </div>
+        ) : null}
       </section>
 
       <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -177,7 +239,13 @@ function Dashboard() {
         <AddActivityDialog
           cropId={crops[0]?.id ?? ""}
           trigger={
-            <Button size="lg" variant="secondary" className="h-14 rounded-2xl">
+            <Button
+              size="lg"
+              variant="secondary"
+              className="h-14 rounded-2xl"
+              disabled={!crops.length}
+              title={crops.length ? undefined : "Register a crop before adding activities"}
+            >
               <Plus className="size-5" /> Add activity
             </Button>
           }
@@ -191,10 +259,7 @@ function Dashboard() {
           size="lg"
           variant="outline"
           className="h-14 rounded-2xl"
-          onClick={() => {
-            setScannerMessage(null);
-            setScannerOpen(true);
-          }}
+          onClick={() => setScannerOpen(true)}
         >
           <ScanLine className="size-5" /> Scan QR
         </Button>
@@ -216,51 +281,7 @@ function Dashboard() {
         </div>
       </section>
 
-      <Dialog open={scannerOpen} onOpenChange={setScannerOpen}>
-        <DialogContent className="rounded-3xl sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Scan HarvestID QR</DialogTitle>
-            <DialogDescription>
-              Point your camera at a passport QR to open the linked crop.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm text-muted-foreground">
-            {scannerBusy ? (
-              <p>Opening camera…</p>
-            ) : scannerMessage ? (
-              <p>{scannerMessage}</p>
-            ) : (
-              <p>Camera access is available on supported mobile and desktop browsers.</p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              className="flex-1 rounded-2xl"
-              onClick={async () => {
-                setScannerBusy(true);
-                setScannerMessage(null);
-                try {
-                  if (!navigator.mediaDevices?.getUserMedia) {
-                    throw new Error("Camera permission required");
-                  }
-                  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                  stream.getTracks().forEach((track) => track.stop());
-                  setScannerMessage("Camera access granted. Open the passport page on a phone or use the QR link directly.");
-                } catch {
-                  setScannerMessage("Camera permission required");
-                } finally {
-                  setScannerBusy(false);
-                }
-              }}
-            >
-              Start scan
-            </Button>
-            <Button variant="outline" className="flex-1 rounded-2xl" onClick={() => setScannerOpen(false)}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <QrScannerDialog open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
 
       <section className="mt-8 card-soft grid gap-4 p-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
         <span className="grid size-14 place-items-center rounded-2xl bg-secondary text-secondary-foreground">

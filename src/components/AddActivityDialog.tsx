@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { Camera, Mic, PenLine, Sparkles, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Camera,
+  Loader2,
+  Mic,
+  PenLine,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -33,6 +41,17 @@ const guesses: { match: string[]; kind: ActivityKind; category: string }[] = [
   { match: ["sow", "plant", "transplant", "seed"], kind: "sowing", category: "Establishment" },
 ];
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read the file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function AddActivityDialog({
   cropId,
   trigger,
@@ -44,10 +63,33 @@ export function AddActivityDialog({
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [kind, setKind] = useState<ActivityKind>("irrigation");
-  const [media, setMedia] = useState<"text" | "photo" | "voice" | "mixed">("text");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [audio, setAudio] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [ai, setAi] = useState<{ title: string; description: string; category: string; confidence: number } | null>(
     null,
   );
+
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  // Stop any in-progress recording when the dialog closes.
+  useEffect(() => {
+    if (!open) stopVoice();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const media: "photo" | "voice" | "text" | "mixed" = photo && audio
+    ? "mixed"
+    : photo
+      ? "photo"
+      : audio
+        ? "voice"
+        : "text";
 
   const enhance = () => {
     if (!note.trim()) {
@@ -68,12 +110,76 @@ export function AddActivityDialog({
     toast.success("Enhanced by AI", { description: "Note formatted and categorised." });
   };
 
+  const attachPhoto = async (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error("Image is too large", { description: "Keep photos under 5 MB." });
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setPhoto(dataUrl);
+    } catch {
+      toast.error("Could not read that image", { description: "Please try another photo." });
+    }
+  };
+
+  const startVoice = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Voice recording is not supported", {
+        description: "This browser cannot record audio.",
+      });
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const type = recorder.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type });
+        const reader = new FileReader();
+        reader.onload = () => setAudio(String(reader.result));
+        reader.onerror = () => toast.error("Could not save the voice note");
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+      recorder.onerror = () => {
+        toast.error("Recording failed", { description: "Please try again." });
+        setRecording(false);
+      };
+      recorder.start();
+      recorderRef.current = recorder;
+      setRecording(true);
+    } catch {
+      toast.error("Microphone unavailable", {
+        description: "Check the microphone permission and try again.",
+      });
+    }
+  };
+
+  const stopVoice = () => {
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    }
+    recorderRef.current = null;
+    setRecording(false);
+  };
+
   const save = async () => {
     if (!note.trim()) {
       toast.error("Nothing to save yet");
       return;
     }
-
+    if (saving) return;
+    setSaving(true);
     try {
       await addActivity({
         cropId,
@@ -84,14 +190,19 @@ export function AddActivityDialog({
         media,
         aiEnhanced: Boolean(ai),
         ...(ai ? { aiSummary: `${ai.category} · recorded by farmer`, confidence: ai.confidence } : {}),
+        ...(photo ? { photo } : {}),
+        ...(audio ? { audio } : {}),
       });
       toast.success("Activity recorded", { description: "Timeline and score updated." });
       setNote("");
       setAi(null);
-      setMedia("text");
+      setPhoto(null);
+      setAudio(null);
       setOpen(false);
     } catch {
       toast.error("Unable to save activity", { description: "Please try again in a moment." });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -108,28 +219,101 @@ export function AddActivityDialog({
 
         <div className="grid gap-5 py-1">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[
-              { key: "photo", label: "Take photo", icon: Camera },
-              { key: "photo", label: "Upload", icon: Upload },
-              { key: "voice", label: "Record voice", icon: Mic },
-              { key: "text", label: "Write note", icon: PenLine },
-            ].map((opt, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => {
-                  setMedia((prev) =>
-                    prev !== "text" && prev !== opt.key ? "mixed" : (opt.key as "photo" | "voice" | "text"),
-                  );
-                  toast(`${opt.label} attached to this activity`);
-                }}
-                className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-muted/40 p-3 text-xs font-medium transition-colors hover:border-primary hover:bg-accent"
-              >
-                <opt.icon className="size-5 text-primary" />
-                {opt.label}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-muted/40 p-3 text-xs font-medium transition-colors hover:border-primary hover:bg-accent"
+            >
+              <Camera className="size-5 text-primary" />
+              Take photo
+            </button>
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-muted/40 p-3 text-xs font-medium transition-colors hover:border-primary hover:bg-accent"
+            >
+              <Upload className="size-5 text-primary" />
+              Upload
+            </button>
+            <button
+              type="button"
+              onClick={() => (recording ? stopVoice() : void startVoice())}
+              className={`flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border p-3 text-xs font-medium transition-colors ${
+                recording
+                  ? "border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/15"
+                  : "border-border bg-muted/40 hover:border-primary hover:bg-accent"
+              }`}
+            >
+              <Mic className={`size-5 ${recording ? "animate-pulse text-destructive" : "text-primary"}`} />
+              {recording ? "Stop recording" : "Record voice"}
+            </button>
+            <button
+              type="button"
+              onClick={() => noteRef.current?.focus()}
+              className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-muted/40 p-3 text-xs font-medium transition-colors hover:border-primary hover:bg-accent"
+            >
+              <PenLine className="size-5 text-primary" />
+              Write note
+            </button>
           </div>
+
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              void attachPhoto(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              void attachPhoto(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+
+          {photo ? (
+            <div className="overflow-hidden rounded-2xl border border-border">
+              <img src={photo} alt="Field photo preview" className="max-h-56 w-full object-cover" />
+              <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-3 py-2">
+                <span className="text-xs text-muted-foreground">Photo attached</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1 rounded-xl text-destructive"
+                  onClick={() => setPhoto(null)}
+                >
+                  <Trash2 className="size-3.5" /> Remove
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {audio ? (
+            <div className="rounded-2xl border border-border bg-muted/40 p-3">
+              <audio controls src={audio} className="w-full" preload="metadata" />
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">Voice note attached</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1 rounded-xl text-destructive"
+                  onClick={() => setAudio(null)}
+                >
+                  <Trash2 className="size-3.5" /> Remove
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="grid gap-2">
             <Label htmlFor={`activity-type-${cropId}`}>Activity type</Label>
@@ -150,6 +334,7 @@ export function AddActivityDialog({
           <div className="grid gap-2">
             <Label htmlFor={`activity-note-${cropId}`}>Field note</Label>
             <Textarea
+              ref={noteRef}
               id={`activity-note-${cropId}`}
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -159,12 +344,7 @@ export function AddActivityDialog({
             />
           </div>
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={enhance}
-            className="w-full gap-2 rounded-2xl"
-          >
+          <Button type="button" variant="secondary" onClick={enhance} className="w-full gap-2 rounded-2xl">
             <Sparkles className="size-4 text-gold" /> AI Enhance
           </Button>
 
@@ -199,8 +379,14 @@ export function AddActivityDialog({
           <Button variant="outline" className="rounded-2xl" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button className="rounded-2xl" onClick={save}>
-            Save activity
+          <Button className="rounded-2xl" onClick={() => void save()} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Saving…
+              </>
+            ) : (
+              "Save activity"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

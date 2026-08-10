@@ -25,7 +25,7 @@ import { QrCode } from "@/components/QrCode";
 import { Timeline } from "@/components/Timeline";
 import { ScoreRing } from "@/components/CropCard";
 import { formatDate, useCrop, useHarvest } from "@/lib/harvest-store";
-import { resolveCropImage } from "@/lib/crop-images";
+import { resolveCropImage, buildPassportUrl } from "@/lib/crop-images";
 
 export const Route = createFileRoute("/passport/$cropId")({
   head: () => ({
@@ -80,6 +80,23 @@ function PassportPage() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const copyPassportLink = async () => {
+    const url = buildPassportUrl(crop.id);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Passport link copied", { description: url });
+    } catch {
+      toast.error("Could not copy the link", {
+        description: "Copy the browser address bar instead.",
+      });
+    }
+  };
+
+  const printPassport = () => {
+    toast.info("Opening print dialog — choose 'Save as PDF'");
+    window.setTimeout(() => window.print(), 400);
   };
 
   return (
@@ -166,21 +183,10 @@ function PassportPage() {
             <QrCode value={crop.id} />
             <p className="text-xs text-muted-foreground">Scan to verify this harvest</p>
             <div className="flex w-full gap-2">
-              <Button
-                variant="secondary"
-                className="flex-1 rounded-2xl"
-                onClick={() => toast.success("Passport link copied for sharing")}
-              >
+              <Button variant="secondary" className="flex-1 rounded-2xl" onClick={copyPassportLink}>
                 <Share2 className="size-4" /> Share
               </Button>
-              <Button
-                variant="outline"
-                className="flex-1 rounded-2xl"
-                onClick={() => {
-                  toast.success("Preparing PDF");
-                  window.setTimeout(() => window.print(), 400);
-                }}
-              >
+              <Button variant="outline" className="flex-1 rounded-2xl" onClick={printPassport}>
                 <Download className="size-4" /> PDF
               </Button>
             </div>
@@ -241,17 +247,13 @@ function PassportPage() {
             <Button
               className="rounded-2xl"
               onClick={() => {
-                toast.success("Preparing PDF");
+                printPassport();
                 setCelebrate(false);
               }}
             >
               Download PDF
             </Button>
-            <Button
-              variant="secondary"
-              className="rounded-2xl"
-              onClick={() => toast.success("QR shared")}
-            >
+            <Button variant="secondary" className="rounded-2xl" onClick={copyPassportLink}>
               Share QR
             </Button>
             <Button variant="outline" className="rounded-2xl" onClick={() => setCelebrate(false)}>

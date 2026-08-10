@@ -34,6 +34,7 @@ export type Activity = {
   aiSummary?: string;
   confidence?: number;
   photo?: string;
+  audio?: string;
 };
 
 export type Crop = {
@@ -63,11 +64,54 @@ type CropDraft = Omit<Crop, "id" | "score" | "passport" | "image" | "stage"> & {
 
 type ApiEnvelope<T> = { success: boolean; data?: T; error?: string; message?: string };
 
-type CropApiRow = Record<string, unknown>;
-type ActivityApiRow = Record<string, unknown>;
+type CropApiRow = {
+  id?: unknown;
+  name?: unknown;
+  crop_name?: unknown;
+  variety?: unknown;
+  category?: unknown;
+  status?: unknown;
+  stage?: unknown;
+  farmer?: unknown;
+  farmer_name?: unknown;
+  farm_name?: unknown;
+  farmName?: unknown;
+  location?: unknown;
+  gps?: unknown;
+  area?: unknown;
+  planting_date?: unknown;
+  plantedOn?: unknown;
+  planted_on?: unknown;
+  harvest_date?: unknown;
+  harvestOn?: unknown;
+  harvest_on?: unknown;
+  score?: unknown;
+  passport?: unknown;
+  image?: unknown;
+  note?: unknown;
+};
+
+type ActivityApiRow = {
+  id?: unknown;
+  crop_id?: unknown;
+  cropId?: unknown;
+  kind?: unknown;
+  title?: unknown;
+  note?: unknown;
+  date?: unknown;
+  created_at?: unknown;
+  media?: unknown;
+  ai_enhanced?: unknown;
+  aiEnhanced?: unknown;
+  ai_summary?: unknown;
+  aiSummary?: unknown;
+  confidence?: unknown;
+  photo?: unknown;
+  audio?: unknown;
+};
 
 const API_BASE_URL = (() => {
-  const configured = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/$/, "");
+  const configured = (import.meta.env["VITE_API_BASE_URL"] || "").trim().replace(/\/$/, "");
 
   if (configured) return configured;
 
@@ -133,6 +177,11 @@ function normalizeCrop(row: CropApiRow): Crop {
 }
 
 function normalizeActivity(row: ActivityApiRow): Activity {
+  const aiSummary = typeof row.ai_summary === "string" ? row.ai_summary : undefined;
+  const confidence = typeof row.confidence === "number" ? row.confidence : undefined;
+  const photo = typeof row.photo === "string" ? row.photo : undefined;
+  const audio = typeof row.audio === "string" ? row.audio : undefined;
+
   return {
     id: String(row.id ?? ""),
     cropId: String(row.crop_id || row.cropId || ""),
@@ -142,9 +191,10 @@ function normalizeActivity(row: ActivityApiRow): Activity {
     date: String(row.date || row.created_at || new Date().toISOString()),
     media: (row.media as Activity["media"]) || "text",
     aiEnhanced: Boolean(row.ai_enhanced || row.aiEnhanced),
-    aiSummary: typeof row.ai_summary === "string" ? row.ai_summary : undefined,
-    confidence: typeof row.confidence === "number" ? row.confidence : undefined,
-    photo: typeof row.photo === "string" ? row.photo : undefined,
+    ...(aiSummary !== undefined ? { aiSummary } : {}),
+    ...(confidence !== undefined ? { confidence } : {}),
+    ...(photo !== undefined ? { photo } : {}),
+    ...(audio !== undefined ? { audio } : {}),
   };
 }
 
@@ -201,7 +251,7 @@ function buildHarvestPayload(data: Partial<Crop> & Record<string, unknown>) {
     score: data.score,
     passport: data.passport,
     image: data.image,
-    note: data.note,
+    note: data["note"],
   });
 }
 
@@ -217,6 +267,7 @@ function buildActivityPayload(data: Omit<Activity, "id">) {
     ai_summary: data.aiSummary,
     confidence: data.confidence,
     photo: data.photo,
+    audio: data.audio,
   });
 }
 
@@ -287,7 +338,7 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const saveProfile = useCallback(async (updates) => {
+  const saveProfile = useCallback(async (updates: Partial<FarmerProfile>) => {
     setProfileLoading(true);
     setProfileError(null);
     try {
@@ -350,7 +401,9 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(buildHarvestPayload(updates as Partial<Crop> & Record<string, unknown>)),
       });
       const updated = Array.isArray(response.data) ? response.data[0] : response.data;
-      if (!updated) return null;
+      if (!updated) {
+        throw new Error("The crop update did not persist. Please try again.");
+      }
       const normalized = normalizeCrop(updated as CropApiRow);
       setCrops((prev) => prev.map((crop) => (crop.id === cropId ? normalized : crop)));
       return normalized;
@@ -405,8 +458,14 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ passport: true }),
       });
       const updated = Array.isArray(response.data) ? response.data[0] : response.data;
-      if (!updated) return;
+      if (!updated) {
+        throw new Error("The passport could not be issued. Please try again.");
+      }
       const normalized = normalizeCrop(updated as CropApiRow);
+      // Only confirm once the backend actually reports the passport as issued.
+      if (!normalized.passport) {
+        throw new Error("The passport was not persisted. Please check the backend connection and try again.");
+      }
       setCrops((prev) => prev.map((crop) => (crop.id === cropId ? normalized : crop)));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to generate passport";
@@ -466,8 +525,16 @@ export const activityMeta: Record<ActivityKind, { label: string; emoji: string }
   harvest: { label: "Harvest", emoji: "🌾" },
 };
 
+function parseDate(d: string): Date | null {
+  if (!d) return null;
+  const date = new Date(d);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-IN", {
+  const date = parseDate(d);
+  if (!date) return "—";
+  return date.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -475,11 +542,15 @@ export function formatDate(d: string) {
 }
 
 export function formatTime(d: string) {
-  return new Date(d).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  const date = parseDate(d);
+  if (!date) return "—";
+  return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function timeAgo(d: string) {
-  const diff = Date.now() - +new Date(d);
+  const date = parseDate(d);
+  if (!date) return "—";
+  const diff = Date.now() - +date;
   const hours = Math.round(diff / 3_600_000);
   if (hours < 1) return "just now";
   if (hours < 24) return `${hours} hrs ago`;

@@ -63,6 +63,15 @@ export function Timeline({ items }: { items: Activity[] }) {
               />
             ) : null}
 
+            {a.audio ? (
+              <audio
+                controls
+                src={a.audio}
+                preload="metadata"
+                className="mt-3 w-full rounded-2xl"
+              />
+            ) : null}
+
             {a.aiEnhanced ? (
               <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-gold/10 p-3">
                 <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">

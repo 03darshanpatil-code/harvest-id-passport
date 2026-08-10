@@ -22,13 +22,13 @@ export const Route = createFileRoute("/crops/new")({
   component: RegisterCrop,
 });
 
-const initial = {
+const blank = {
   name: "",
   variety: "",
   category: "Vegetable",
   area: "",
-  farmer: "Ramesh Kumar",
-  farmName: "Green Valley Farms",
+  farmer: "",
+  farmName: "",
   location: "",
   gps: "",
   plantedOn: "",
@@ -36,15 +36,22 @@ const initial = {
 };
 
 function RegisterCrop() {
-  const { addCrop } = useHarvest();
+  const { addCrop, profile } = useHarvest();
   const navigate = useNavigate();
-  const [form, setForm] = useState(initial);
-
-  const set = (key: keyof typeof initial) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const [form, setForm] = useState(() => ({
+    ...blank,
+    // Prefill with the saved profile so the passport always carries the real farmer identity.
+    farmer: profile.fullName,
+    farmName: profile.farmName,
+    location: profile.location,
+  }));
+  const [saving, setSaving] = useState(false);
+  const set = (key: keyof typeof blank) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     if (!form.name.trim() || !form.location.trim()) {
       toast.error("A crop name and location are needed", {
         description: "These appear on the passport.",
@@ -52,6 +59,7 @@ function RegisterCrop() {
       return;
     }
 
+    setSaving(true);
     try {
       const crop = await addCrop({
         ...form,
@@ -64,6 +72,8 @@ function RegisterCrop() {
       toast.error("Could not register crop", {
         description: "Please check the backend connection and try again.",
       });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -103,8 +113,12 @@ function RegisterCrop() {
           >
             Cancel
           </Button>
-          <Button type="submit" className="h-12 flex-1 rounded-2xl sm:flex-none sm:px-10">
-            Save crop
+          <Button
+            type="submit"
+            className="h-12 flex-1 rounded-2xl sm:flex-none sm:px-10"
+            disabled={saving}
+          >
+            {saving ? "Saving…" : "Save crop"}
           </Button>
         </div>
       </form>

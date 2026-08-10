@@ -16,6 +16,7 @@ const normalizeActivity = (row) => ({
   aiSummary: row.ai_summary || row.aiSummary || undefined,
   confidence: typeof row.confidence === "number" ? row.confidence : undefined,
   photo: row.photo || undefined,
+  audio: row.audio || undefined,
 });
 
 const normalizeKind = (kind) => {
@@ -109,6 +110,7 @@ const createActivity = async (req, res) => {
       ai_summary: req.body.aiSummary || null,
       confidence: typeof req.body.confidence === "number" ? req.body.confidence : null,
       photo: req.body.photo || null,
+      audio: req.body.audio || null,
     };
 
     const { data, error } = await supabase.from("activities").insert([payload]).select("*");
@@ -131,6 +133,7 @@ const createActivity = async (req, res) => {
         ai_summary: payload.ai_summary,
         confidence: payload.confidence,
         photo: payload.photo,
+        audio: payload.audio,
         created_at: new Date().toISOString(),
       };
       const nextRecords = [activityRecord, ...existing];
@@ -167,6 +170,28 @@ const createActivity = async (req, res) => {
   }
 };
 
+// Only apply fields the client actually sent, so a partial update (e.g. just a
+// note) never wipes the activity's crop link, kind or title.
+const buildUpdatePayload = (body) => {
+  const payload = {};
+  if (body.crop_id !== undefined || body.cropId !== undefined) {
+    payload.crop_id = body.crop_id ?? body.cropId ?? null;
+  }
+  if (body.kind !== undefined) payload.kind = normalizeKind(body.kind);
+  if (body.title !== undefined) payload.title = body.title;
+  if (body.note !== undefined) payload.note = body.note;
+  if (body.date !== undefined) payload.date = body.date;
+  if (body.media !== undefined) payload.media = body.media;
+  if (body.aiEnhanced !== undefined) payload.ai_enhanced = Boolean(body.aiEnhanced);
+  if (body.aiSummary !== undefined) payload.ai_summary = body.aiSummary || null;
+  if (body.confidence !== undefined) {
+    payload.confidence = typeof body.confidence === "number" ? body.confidence : null;
+  }
+  if (body.photo !== undefined) payload.photo = body.photo || null;
+  if (body.audio !== undefined) payload.audio = body.audio || null;
+  return payload;
+};
+
 const updateActivity = async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -174,18 +199,7 @@ const updateActivity = async (req, res) => {
       return res.status(400).json({ success: false, error: "Invalid activity id" });
     }
 
-    const payload = {
-      crop_id: req.body.crop_id ?? req.body.cropId ?? null,
-      kind: normalizeKind(req.body.kind || "sowing"),
-      title: req.body.title || "Field activity",
-      note: req.body.note || "",
-      date: req.body.date || new Date().toISOString(),
-      media: req.body.media || "text",
-      ai_enhanced: Boolean(req.body.aiEnhanced),
-      ai_summary: req.body.aiSummary || null,
-      confidence: typeof req.body.confidence === "number" ? req.body.confidence : null,
-      photo: req.body.photo || null,
-    };
+    const payload = buildUpdatePayload(req.body || {});
 
     const { data, error } = await supabase.from("activities").update(payload).eq("id", id).select("*");
 
@@ -195,17 +209,25 @@ const updateActivity = async (req, res) => {
       }
 
       const existing = readActivityStore();
+      const target = existing.find((activity) => String(activity.id) === String(id));
+      if (!target) {
+        return res.status(404).json({ success: false, error: "Activity not found" });
+      }
       const nextRecords = existing.map((activity) =>
         String(activity.id) === String(id)
-          ? { ...activity, ...payload, id: activity.id, crop_id: payload.crop_id, created_at: activity.created_at || new Date().toISOString() }
+          ? { ...activity, ...payload, id: activity.id, created_at: activity.created_at || new Date().toISOString() }
           : activity,
       );
       writeActivityStore(nextRecords);
-      const updated = nextRecords.find((activity) => String(activity.id) === String(id));
-      return res.json({ success: true, data: normalizeActivity(updated) });
+      return res.json({ success: true, data: normalizeActivity({ ...target, ...payload }) });
     }
 
-    res.json({ success: true, data: normalizeActivity(Array.isArray(data) ? data[0] : data) });
+    const updated = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    if (!updated) {
+      return res.status(404).json({ success: false, error: "Activity not found" });
+    }
+
+    res.json({ success: true, data: normalizeActivity(updated) });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

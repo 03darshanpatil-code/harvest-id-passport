@@ -1,23 +1,22 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
-  Bot,
   FileText,
   Home,
   LayoutGrid,
-  LogOut,
   Plus,
   ScrollText,
   Settings,
   Sprout,
   User,
-  Bell,
   QrCode as QrIcon,
 } from "lucide-react";
-import { type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { QrScannerDialog } from "@/components/QrScannerDialog";
 import { useHarvest } from "@/lib/harvest-store";
+import { parseCropIdFromQr } from "@/lib/crop-images";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: Home },
@@ -57,7 +56,24 @@ export function AppLayout({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { profile } = useHarvest();
+  const navigate = useNavigate();
+  const [scannerOpen, setScannerOpen] = useState(false);
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
+
+  const handleScanned = useCallback(
+    (decodedText: string) => {
+      const cropId = parseCropIdFromQr(decodedText);
+      if (!cropId) {
+        toast.error("QR code not recognised", {
+          description: "This doesn't look like a HarvestID passport code.",
+        });
+        return;
+      }
+      setScannerOpen(false);
+      navigate({ to: "/passport/$cropId", params: { cropId } });
+    },
+    [navigate],
+  );
 
   return (
     <div className="min-h-screen w-full bg-background">
@@ -79,13 +95,6 @@ export function AppLayout({
             </Link>
           ))}
         </nav>
-        <button
-          onClick={() => toast("Signed out of the demo session")}
-          className="flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
-        >
-          <LogOut className="size-[18px]" />
-          Logout
-        </button>
       </aside>
 
       <div className="lg:pl-64">
@@ -110,19 +119,9 @@ export function AppLayout({
                 size="icon"
                 aria-label="Scan QR code"
                 className="min-h-11 min-w-11 rounded-2xl"
-                onClick={() => toast("Point your camera at a HarvestID passport QR")}
+                onClick={() => setScannerOpen(true)}
               >
                 <QrIcon className="size-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Notifications"
-                className="relative min-h-11 min-w-11 rounded-2xl"
-                onClick={() => toast("3 new updates from your fields")}
-              >
-                <Bell className="size-5" />
-                <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-gold" />
               </Button>
               <Link
                 to="/settings"
@@ -141,16 +140,6 @@ export function AppLayout({
 
         <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:pb-16">{children}</main>
       </div>
-
-      {/* Floating AI assistant */}
-      <Button
-        onClick={() => toast.success("AI Assistant", { description: "How can I help with your fields today?" })}
-        className="fixed bottom-24 right-4 z-30 h-14 gap-2 rounded-full px-5 shadow-lift lg:bottom-8 lg:right-8"
-        aria-label="Open AI assistant"
-      >
-        <Bot className="size-5" />
-        <span className="hidden sm:inline">AI Assistant</span>
-      </Button>
 
       {/* Mobile bottom navigation */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-xl lg:hidden">
@@ -173,6 +162,8 @@ export function AppLayout({
           <BottomLink to="/settings" label="Profile" icon={User} active={isActive("/settings")} />
         </div>
       </nav>
+
+      <QrScannerDialog open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
     </div>
   );
 }

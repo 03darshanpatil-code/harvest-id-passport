@@ -49,17 +49,20 @@ export function resolveCropImage(name = "", variety = "", category = "", existin
   return GENERIC_IMAGE;
 }
 
+const FALLBACK_SITE_URL = "https://harvest-id-passport.vercel.app";
+
 export function getPublicSiteUrl(path = "") {
-  const configured = (import.meta.env.VITE_PUBLIC_SITE_URL || import.meta.env.VITE_APP_URL || "")
+  const configured = (import.meta.env["VITE_PUBLIC_SITE_URL"] || import.meta.env["VITE_APP_URL"] || "")
     .trim()
     .replace(/\/$/, "");
 
-  const defaultOrigin =
-    typeof window !== "undefined" && window.location?.origin
-      ? window.location.origin
-      : "https://harvest-id-passport.vercel.app";
-
-  const origin = configured || (import.meta.env.PROD ? defaultOrigin : "https://harvest-id-passport.vercel.app");
+  // Prefer the origin the app is actually served from, so QR codes resolve to
+  // the deployed (Vercel) domain in production and to the dev/preview origin
+  // locally. The hardcoded fallback is only used server-side (no window) when
+  // no env override is configured.
+  const browserOrigin =
+    typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
+  const origin = configured || browserOrigin || FALLBACK_SITE_URL;
   const normalized = origin.replace(/\/$/, "");
   return `${normalized}${path.startsWith("/") ? path : `/${path}`}`;
 }

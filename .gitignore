@@ -16,6 +16,14 @@ dist-ssr
 .nitro
 *.local
 
+# Environment files — never commit secrets
+.env
+.env.*
+!.env.example
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
