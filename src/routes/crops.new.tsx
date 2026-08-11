@@ -1,11 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useHarvest } from "@/lib/harvest-store";
+import { fileToResizedDataUrl } from "@/lib/crop-images";
 
 export const Route = createFileRoute("/crops/new")({
   head: () => ({
@@ -33,7 +35,10 @@ const blank = {
   gps: "",
   plantedOn: "",
   harvestOn: "",
+  image: "",
 };
+
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 function RegisterCrop() {
   const { addCrop, profile } = useHarvest();
@@ -46,8 +51,32 @@ function RegisterCrop() {
     location: profile.location,
   }));
   const [saving, setSaving] = useState(false);
+  const [readingImage, setReadingImage] = useState(false);
   const set = (key: keyof typeof blank) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const attachImage = async (file: File | undefined | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file", {
+        description: "The crop photo must be a JPG, PNG or similar image.",
+      });
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error("Image is too large", { description: "Keep the photo under 8 MB." });
+      return;
+    }
+    setReadingImage(true);
+    try {
+      const dataUrl = await fileToResizedDataUrl(file);
+      setForm((f) => ({ ...f, image: dataUrl }));
+    } catch {
+      toast.error("Could not read that image", { description: "Please try another photo." });
+    } finally {
+      setReadingImage(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,6 +119,67 @@ function RegisterCrop() {
           <Field id="variety" label="Variety" value={form.variety} onChange={set("variety")} placeholder="Cherry Tomato" />
           <Field id="category" label="Category" value={form.category} onChange={set("category")} />
           <Field id="area" label="Farm size" value={form.area} onChange={set("area")} placeholder="2.5 acres" />
+        </Section>
+
+        <Section title="Crop photo (optional)">
+          <div className="grid gap-3 sm:col-span-2">
+            <p className="text-sm text-muted-foreground">
+              Add a photo of your crop. If you skip this, HarvestID automatically picks a matching
+              crop image from the crop name.
+            </p>
+            {form.image ? (
+              <div className="overflow-hidden rounded-2xl border border-border">
+                <img
+                  src={form.image}
+                  alt="Crop photo preview"
+                  className="max-h-64 w-full object-cover"
+                />
+                <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">Custom crop photo attached</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1 rounded-xl text-destructive"
+                    onClick={() => setForm((f) => ({ ...f, image: "" }))}
+                  >
+                    <Trash2 className="size-3.5" /> Remove
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <label
+                className={`flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-center text-sm transition-colors hover:border-primary hover:bg-accent ${
+                  readingImage ? "pointer-events-none opacity-60" : ""
+                }`}
+              >
+                {readingImage ? (
+                  <>
+                    <Loader2 className="size-6 animate-spin text-primary" />
+                    <span className="text-muted-foreground">Preparing image…</span>
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus className="size-6 text-primary" />
+                    <span className="font-medium">Upload a crop photo</span>
+                    <span className="text-xs text-muted-foreground">
+                      JPG or PNG, up to 8 MB — resized automatically
+                    </span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={readingImage}
+                  onChange={(e) => {
+                    void attachImage(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+          </div>
         </Section>
 
         <Section title="Farm information">

@@ -25,7 +25,8 @@ import { QrCode } from "@/components/QrCode";
 import { Timeline } from "@/components/Timeline";
 import { ScoreRing } from "@/components/CropCard";
 import { formatDate, useCrop, useHarvest } from "@/lib/harvest-store";
-import { resolveCropImage, buildPassportUrl } from "@/lib/crop-images";
+import { CropImage } from "@/components/CropImage";
+import { buildPassportUrl } from "@/lib/crop-images";
 
 export const Route = createFileRoute("/passport/$cropId")({
   head: () => ({
@@ -102,12 +103,9 @@ function PassportPage() {
   return (
     <main className="min-h-screen bg-background pb-20">
       <header className="relative overflow-hidden">
-        <img
-          src={crop.image}
+        <CropImage
+          crop={crop}
           alt={`${crop.variety} from ${crop.farmName}`}
-          onError={(event) => {
-            event.currentTarget.src = resolveCropImage(crop.name, crop.variety, crop.category, "");
-          }}
           width={1024}
           height={768}
           className="h-56 w-full object-cover sm:h-72"

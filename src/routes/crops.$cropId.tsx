@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, useCrop } from "@/lib/harvest-store";
-import { resolveCropImage } from "@/lib/crop-images";
+import { CropImage } from "@/components/CropImage";
 
 export const Route = createFileRoute("/crops/$cropId")({
   head: () => ({
@@ -68,12 +68,9 @@ function CropDetails() {
   return (
     <AppLayout title={crop.name} subtitle={crop.variety}>
       <section className="relative overflow-hidden rounded-3xl shadow-lift">
-        <img
-          src={crop.image}
+        <CropImage
+          crop={crop}
           alt={`${crop.variety} growing at ${crop.farmName}`}
-          onError={(event) => {
-            event.currentTarget.src = resolveCropImage(crop.name, crop.variety, crop.category, "");
-          }}
           width={1024}
           height={768}
           className="h-64 w-full object-cover sm:h-80"

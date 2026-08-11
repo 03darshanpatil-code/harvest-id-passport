@@ -7,9 +7,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import tomato from "@/assets/crop-tomato.jpg";
-import wheat from "@/assets/crop-wheat.jpg";
-import chili from "@/assets/crop-chili.jpg";
 import { resolveCropImage, buildPassportUrl, parseCropIdFromQr } from "@/lib/crop-images";
 
 export type ActivityKind =
@@ -122,13 +119,6 @@ const API_BASE_URL = (() => {
   return "https://harvest-id-backend.onrender.com";
 })();
 
-function getFallbackImage(name = "") {
-  const normalized = name.toLowerCase();
-  if (normalized.includes("wheat") || normalized.includes("grain")) return wheat;
-  if (normalized.includes("tom")) return tomato;
-  return chili;
-}
-
 export type FarmerProfile = {
   fullName: string;
   farmName: string;
@@ -153,9 +143,16 @@ function normalizeStage(status?: string): Crop["stage"] {
 
 function normalizeCrop(row: CropApiRow): Crop {
   const name = String(row.crop_name || row.name || "");
-  const image = typeof row.image === "string" && row.image.trim()
-    ? row.image
-    : resolveCropImage(name, String(row.variety || ""), String(row.category || ""), getFallbackImage(name));
+  // A farmer-uploaded image (data URL) is used as-is; anything else is
+  // re-resolved from the crop name so stored legacy/fallback images can never
+  // show a misleading photo of a different crop.
+  const storedImage = typeof row.image === "string" ? row.image : "";
+  const image = resolveCropImage(
+    name,
+    String(row.variety || ""),
+    String(row.category || ""),
+    storedImage.startsWith("data:") ? storedImage : undefined,
+  );
 
   return {
     id: String(row.id ?? ""),
@@ -367,8 +364,9 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
   const addCrop: Store["addCrop"] = useCallback(async (data) => {
     setError(null);
     try {
-      const payloadImage = data.image || resolveCropImage(data.name, data.variety, data.category, "");
-    const response = await apiRequest<ApiEnvelope<CropApiRow | CropApiRow[]>>("/api/harvest", {
+      // Only a farmer-uploaded image is persisted. Catalog images are resolved
+      // at render time from the crop name, so nothing misleading is ever saved.
+      const response = await apiRequest<ApiEnvelope<CropApiRow | CropApiRow[]>>("/api/harvest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -378,7 +376,7 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
           farmName: data.farmName,
           plantedOn: data.plantedOn,
           harvestOn: data.harvestOn,
-          image: payloadImage,
+          ...(data.image ? { image: data.image } : {}),
         }),
       });
       const created = Array.isArray(response.data) ? response.data[0] : response.data;

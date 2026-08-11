@@ -1,7 +1,4 @@
 import { Sparkles, Mic, Image as ImageIcon } from "lucide-react";
-import tomato from "@/assets/crop-tomato.jpg";
-import wheat from "@/assets/crop-wheat.jpg";
-import chili from "@/assets/crop-chili.jpg";
 import { Badge } from "@/components/ui/badge";
 import { activityMeta, formatDate, formatTime, type Activity } from "@/lib/harvest-store";
 
@@ -55,7 +52,8 @@ export function Timeline({ items }: { items: Activity[] }) {
                 alt={`Field evidence for ${a.title}`}
                 loading="lazy"
                 onError={(event) => {
-                  event.currentTarget.src = a.photo?.includes("crop-wheat") ? wheat : a.photo?.includes("crop-tomato") ? tomato : chili;
+                  // A broken attachment disappears rather than showing an unrelated photo.
+                  event.currentTarget.style.display = "none";
                 }}
                 width={1024}
                 height={768}
