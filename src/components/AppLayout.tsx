@@ -3,6 +3,7 @@ import {
   BarChart3,
   FileText,
   Home,
+  Languages,
   LayoutGrid,
   Plus,
   ScrollText,
@@ -17,7 +18,14 @@ import { toast } from "sonner";
 import { QrScannerDialog } from "@/components/QrScannerDialog";
 import { useHarvest } from "@/lib/harvest-store";
 import { parseCropIdFromQr } from "@/lib/crop-images";
-import { useI18n, type TranslationKey } from "@/i18n";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LANGUAGES, useI18n, type LanguageCode, type TranslationKey } from "@/i18n";
 
 const nav = [
   { to: "/", labelKey: "nav.dashboard" as TranslationKey, icon: Home },
@@ -58,7 +66,7 @@ export function AppLayout({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { profile } = useHarvest();
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const navigate = useNavigate();
   const [scannerOpen, setScannerOpen] = useState(false);
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
@@ -117,6 +125,23 @@ export function AppLayout({
               ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
+              <Select value={lang} onValueChange={(value) => setLang(value as LanguageCode)}>
+                <SelectTrigger
+                  aria-label={t("settings.language")}
+                  className="h-11 w-auto gap-1.5 rounded-2xl border-border bg-muted/40 px-2.5 sm:px-3"
+                >
+                  <Languages className="size-4 shrink-0 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((language) => (
+                    <SelectItem key={language.code} value={language.code}>
+                      {language.native}
+                      <span className="ml-2 text-xs text-muted-foreground">({language.english})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant="ghost"
                 size="icon"

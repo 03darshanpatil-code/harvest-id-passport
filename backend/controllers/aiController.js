@@ -5,8 +5,13 @@
 // controller forwards the farmer's question to Google Gemini and asks it to
 // reply in the farmer's selected language.
 
-const GEMINI_MODEL = "gemini-1.5-flash";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
+// Ordered model list. gemini-2.5-flash is the current stable price/performance
+// model for low-latency text tasks. If a model is ever retired (gemini-1.5-flash
+// was retired in Sept 2025), we fall back to the next one so the assistant
+// keeps working without an emergency redeploy.
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash-lite"];
+const REQUEST_TIMEOUT_MS = 45_000;
 
 const LANGUAGE_NAMES = {
   en: "English",
@@ -68,38 +73,87 @@ function buildSystemPrompt(lang, context) {
   return parts.join("\n");
 }
 
+/** Error that maps to an HTTP response; the message never contains secrets. */
+class AiProviderError extends Error {
+  constructor(status, code, message) {
+    super(message);
+    this.name = "AiProviderError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 async function chatWithGemini(apiKey, prompt) {
   const doFetch = typeof globalThis.fetch === "function" ? globalThis.fetch : require("node-fetch");
 
-  const response = await doFetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 1024,
-        topP: 0.95,
-      },
-    }),
-  });
+  let lastError = null;
+  for (const model of GEMINI_MODELS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await doFetch(
+        `${GEMINI_BASE_URL}/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.4,
+              maxOutputTokens: 1024,
+              topP: 0.95,
+            },
+          }),
+          signal: controller.signal,
+        },
+      );
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`AI provider error (${response.status})${body ? `: ${body.slice(0, 200)}` : ""}`);
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+
+        // A retired/unknown model — try the next one in the list.
+        if (response.status === 404 && /not found|not supported/i.test(body)) {
+          lastError = new AiProviderError(404, "model_not_found", `AI model ${model} is unavailable.`);
+          continue;
+        }
+        if (response.status === 429) {
+          throw new AiProviderError(429, "rate_limited", "The AI service is busy (rate limit). Please try again in a moment.");
+        }
+        if (response.status === 400 && /api key|invalid|unauthorized|permission/i.test(body)) {
+          throw new AiProviderError(502, "invalid_api_key", "The AI service rejected the configured API key. Check GOOGLE_API_KEY on the server.");
+        }
+        throw new AiProviderError(response.status, "provider_error", `The AI service returned an error (${response.status}).`);
+      }
+
+      const payload = await response.json();
+      const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text || !text.trim()) {
+        throw new AiProviderError(502, "empty_response", "The AI service returned an empty response. Please try again.");
+      }
+      return text.trim();
+    } catch (err) {
+      if (err instanceof AiProviderError) {
+        lastError = err;
+        if (err.code === "model_not_found") continue; // only model fallback continues
+        break;
+      }
+      if (err?.name === "AbortError") {
+        throw new AiProviderError(504, "timeout", "The AI service took too long to respond. Please try again.");
+      }
+      throw new AiProviderError(502, "network", "Could not reach the AI service. Please try again.");
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
-  const payload = await response.json();
-  const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text || !text.trim()) {
-    throw new Error("AI provider returned an empty response");
-  }
-  return text.trim();
+  if (lastError) throw lastError;
+  throw new AiProviderError(502, "provider_error", "The AI service is unavailable. Please try again.");
 }
 
 async function chat(req, res) {
+  // Accept both `lang` (frontend) and `language` for robustness.
   const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
-  const lang = normalizeLang(req.body?.lang);
+  const lang = normalizeLang(req.body?.lang ?? req.body?.language);
   const context = req.body?.context && typeof req.body.context === "object" ? req.body.context : null;
 
   if (!message) {
@@ -114,7 +168,7 @@ async function chat(req, res) {
     return res.status(503).json({
       success: false,
       configured: false,
-      error: "AI assistant is not configured yet.",
+      error: "AI assistant is not configured on the server.",
     });
   }
 
@@ -124,11 +178,17 @@ async function chat(req, res) {
     return res.json({ success: true, reply });
   } catch (err) {
     console.error("[ai] chat failed:", err);
-    return res.status(500).json({
+    const status = err instanceof AiProviderError && err.status ? err.status : 502;
+    return res.status(status).json({
       success: false,
       error: err instanceof Error ? err.message : "AI assistant failed",
     });
   }
 }
 
-module.exports = { chat };
+// Debug endpoint for production configuration. Never exposes the API key.
+function health(req, res) {
+  res.json({ success: true, configured: Boolean(process.env.GOOGLE_API_KEY) });
+}
+
+module.exports = { chat, health };

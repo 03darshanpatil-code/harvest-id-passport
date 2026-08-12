@@ -224,11 +224,18 @@ export function FarmerAssistant() {
       setMessages((prev) => [...prev, { role: "user", text: message }]);
       setInput("");
       try {
-        const response = await fetch(`${API_BASE_URL}/api/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, lang, context }),
-        });
+        let response: Response;
+        try {
+          response = await fetch(`${API_BASE_URL}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, lang, context }),
+          });
+        } catch {
+          // The server could not be reached at all — the connection message is
+          // accurate here and is what the farmer needs to act on.
+          throw new Error(`${t("assistant.error")} ${t("assistant.errorDesc")}`);
+        }
         const payload = (await response.json().catch(() => null)) as
           | { success?: boolean; reply?: string; configured?: boolean; error?: string }
           | null;
@@ -239,6 +246,8 @@ export function FarmerAssistant() {
               { role: "assistant", text: t("assistant.notConfigured") },
             ]);
           } else {
+            // Surface the real backend error so the actual problem is visible
+            // instead of a generic "could not reach" message.
             throw new Error(payload?.error || t("assistant.error"));
           }
           return;
@@ -246,11 +255,12 @@ export function FarmerAssistant() {
         const reply = payload?.reply?.trim();
         if (!reply) throw new Error(t("assistant.error"));
         setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
-      } catch {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", text: `${t("assistant.error")} ${t("assistant.errorDesc")}` },
-        ]);
+      } catch (err) {
+        const text =
+          err instanceof Error && err.message
+            ? err.message
+            : `${t("assistant.error")} ${t("assistant.errorDesc")}`;
+        setMessages((prev) => [...prev, { role: "assistant", text }]);
       } finally {
         setBusy(false);
       }
