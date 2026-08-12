@@ -433,37 +433,37 @@ This avoids maintaining multiple independent versions of the logo.
 🏗️ System Architecture
 
 
-                                                                     ┌──────────────────────┐
-                                                                     │      FARMER          │
-                                                                     └──────────┬───────────┘
-                                                                                │
-                                                                                ▼
-                                                                     ┌──────────────────────┐
-                                                                     │   HarvestID Frontend │
-                                                                     │   Web Application    │
-                                                                     └──────────┬───────────┘
-                                                                                │
-                                                          ┌─────────────────────┼──────────────────────┐
-                                                          │                     │                      │
-                                                          ▼                     ▼                      ▼
-                                                     Crop System          AI Assistant          QR Passport
-                                                          │                     │                      │
-                                                          ▼                     ▼                      ▼
-                                                      Activities          Gemini AI              Public URL
-                                                          │                     │                      │
-                                                          └─────────────────────┼──────────────────────┘
-                                                                                │
-                                                                                ▼
-                                                                     ┌──────────────────────┐
-                                                                     │     Express API      │
-                                                                     │   Node.js Backend    │
-                                                                     └──────────┬───────────┘
-                                                                                │
-                                                                                ▼
-                                                                     ┌──────────────────────┐
-                                                                     │      Supabase        │
-                                                                     │ Database + Storage   │
-                                                                     └──────────────────────┘
+                                 ┌──────────────────────┐
+                                 │      FARMER          │
+                                 └──────────┬───────────┘
+                                            │
+                                            ▼
+                                 ┌──────────────────────┐
+                                 │   HarvestID Frontend │
+                                 │   Web Application    │
+                                 └──────────┬───────────┘
+                                            │
+                      ┌─────────────────────┼──────────────────────┐
+                      │                     │                      │
+                      ▼                     ▼                      ▼
+                 Crop System          AI Assistant          QR Passport
+                      │                     │                      │
+                      ▼                     ▼                      ▼
+                  Activities          Gemini AI              Public URL
+                      │                     │                      │
+                      └─────────────────────┼──────────────────────┘
+                                            │
+                                            ▼
+                                 ┌──────────────────────┐
+                                 │     Express API      │
+                                 │   Node.js Backend    │
+                                 └──────────┬───────────┘
+                                            │
+                                            ▼
+                                 ┌──────────────────────┐
+                                 │      Supabase        │
+                                 │ Database + Storage   │
+                                 └──────────────────────┘
 
                                                                      
 
