@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -54,8 +54,57 @@ function RegisterCrop() {
   }));
   const [saving, setSaving] = useState(false);
   const [readingImage, setReadingImage] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const set = (key: keyof typeof blank) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // One-shot browser geolocation — never continuous tracking. If permission is
+  // denied or the lookup fails, the farmer can continue manually.
+  const useMyLocation = () => {
+    setGpsError(null);
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setGpsError(t("gps.unsupported"));
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setForm((f) => ({ ...f, gps: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` }));
+        // Best-effort reverse geocode (village/town, district/state, country).
+        // A failure here never blocks registration — coordinates remain set.
+        try {
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+          );
+          if (response.ok) {
+            const place = (await response.json()) as {
+              city?: string;
+              locality?: string;
+              principalSubdivision?: string;
+              countryName?: string;
+            };
+            const parts = [place.city || place.locality, place.principalSubdivision, place.countryName].filter(
+              Boolean,
+            );
+            if (parts.length) setForm((f) => ({ ...f, location: parts.join(", ") }));
+          }
+        } catch {
+          // coordinates are enough
+        }
+        setLocating(false);
+      },
+      (error) => {
+        // 1 = permission denied, 2 = unavailable, 3 = timeout
+        if (error.code === 1) setGpsError(t("gps.denied"));
+        else if (error.code === 3) setGpsError(t("gps.timeout"));
+        else setGpsError(t("gps.unavailable"));
+        setLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 },
+    );
+  };
 
   const attachImage = async (file: File | undefined | null) => {
     if (!file) return;
@@ -187,7 +236,35 @@ function RegisterCrop() {
           <Field id="farmer" label={t("crop.farmerName")} value={form.farmer} onChange={set("farmer")} />
           <Field id="farmName" label={t("crop.farmName")} value={form.farmName} onChange={set("farmName")} />
           <Field id="location" label={t("crop.farmLocation")} value={form.location} onChange={set("location")} placeholder={t("crop.farmLocationPlaceholder")} />
-          <Field id="gps" label={t("crop.gps")} value={form.gps} onChange={set("gps")} placeholder="12.9716° N, 77.5946° E" />
+          <div className="grid gap-2">
+            <Field
+              id="gps"
+              label={t("crop.gps")}
+              value={form.gps}
+              onChange={set("gps")}
+              placeholder={t("crop.gpsPlaceholder")}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="justify-self-start gap-1.5 rounded-xl"
+              onClick={useMyLocation}
+              disabled={locating}
+            >
+              {locating ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <MapPin className="size-4" />
+              )}
+              {locating ? t("gps.locating") : t("gps.useMyLocation")}
+            </Button>
+            {gpsError ? (
+              <p role="alert" className="text-xs text-destructive">
+                {gpsError}
+              </p>
+            ) : null}
+          </div>
         </Section>
 
         <Section title={t("crop.dates")}>

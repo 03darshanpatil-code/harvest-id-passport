@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
-import { Languages } from "lucide-react";
+import { Languages, Volume2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useHarvest, type FarmerProfile } from "@/lib/harvest-store";
 import { LANGUAGES, useI18n } from "@/i18n";
+import { getAutoSpeak, setAutoSpeak, subscribeAutoSpeak } from "@/lib/auto-speak";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -38,6 +39,7 @@ function SettingsPage() {
   const { t, lang, setLang } = useI18n();
   const [form, setForm] = useState<FarmerProfile>(profile);
   const [saving, setSaving] = useState(false);
+  const autoSpeak = useSyncExternalStore(subscribeAutoSpeak, getAutoSpeak);
 
   useEffect(() => {
     setForm(profile);
@@ -151,6 +153,34 @@ function SettingsPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        <div className="card-soft mt-5 p-6">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-secondary text-secondary-foreground">
+              <Volume2 className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold">{t("settings.voice")}</h3>
+              <p className="text-sm text-muted-foreground">{t("settings.voiceDesc")}</p>
+            </div>
+          </div>
+          <div className="mt-2">
+            <Separator />
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-4">
+              <div className="min-w-0">
+                <Label htmlFor="s-autospeak" className="text-sm font-medium">
+                  {t("settings.autoSpeak")}
+                </Label>
+                <p className="text-xs text-muted-foreground">{t("settings.autoSpeakDesc")}</p>
+              </div>
+              <Switch
+                id="s-autospeak"
+                checked={autoSpeak}
+                onCheckedChange={(value) => setAutoSpeak(value)}
+              />
+            </div>
           </div>
         </div>
 

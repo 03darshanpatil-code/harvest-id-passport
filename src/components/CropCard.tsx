@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Crop } from "@/lib/harvest-store";
 import { CropImage } from "@/components/CropImage";
 import { useI18n } from "@/i18n";
+import { localizeCropName } from "@/lib/crop-l10n";
 
 export function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
   const { t } = useI18n();
@@ -39,16 +40,17 @@ export function ScoreRing({ score, size = 64 }: { score: number; size?: number }
 }
 
 export function CropCard({ crop }: { crop: Crop }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const displayName = localizeCropName(crop.name, crop.variety, lang);
   return (
-    <article className="card-soft lift group overflow-hidden">
+    <article className="card-soft lift group overflow-hidden ring-1 ring-transparent transition-all duration-300 hover:ring-primary/25">
       <div className="relative aspect-[16/10] overflow-hidden">
         <CropImage
           crop={crop}
-          alt={`${crop.variety} crop at ${crop.farmName}`}
+          alt={t("cropImage.alt", { name: displayName })}
           width={1024}
           height={768}
-          className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="size-full object-cover transition-transform duration-500 will-change-transform group-hover:scale-105"
         />
         <div className="absolute left-3 top-3 flex gap-2">
           <Badge className="rounded-full bg-card/90 text-foreground hover:bg-card/90">
@@ -64,7 +66,7 @@ export function CropCard({ crop }: { crop: Crop }) {
 
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 p-5">
         <div className="min-w-0">
-          <h3 className="truncate text-lg font-semibold">{crop.name}</h3>
+          <h3 className="truncate text-lg font-semibold">{displayName}</h3>
           <p className="truncate text-sm text-muted-foreground">{crop.variety}</p>
           <p className="mt-1.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
             <MapPin className="size-3.5 shrink-0" />

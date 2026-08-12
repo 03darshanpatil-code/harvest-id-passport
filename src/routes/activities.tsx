@@ -4,6 +4,7 @@ import { Timeline } from "@/components/Timeline";
 import { Badge } from "@/components/ui/badge";
 import { useHarvest } from "@/lib/harvest-store";
 import { useI18n } from "@/i18n";
+import { localizeCropName } from "@/lib/crop-l10n";
 
 export const Route = createFileRoute("/activities")({
   head: () => ({
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/activities")({
 
 function ActivitiesPage() {
   const { activities, crops, loading, error } = useHarvest();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const sorted = [...activities].sort((a, b) => +new Date(b.date) - +new Date(a.date));
 
   return (
@@ -41,7 +42,7 @@ function ActivitiesPage() {
       <div className="mt-4 flex flex-wrap gap-2">
         {crops.map((c) => (
           <Badge key={c.id} variant="secondary" className="rounded-full px-3 py-1.5">
-            {c.name} · {activities.filter((a) => a.cropId === c.id).length}
+            {localizeCropName(c.name, c.variety, lang)} · {activities.filter((a) => a.cropId === c.id).length}
           </Badge>
         ))}
       </div>

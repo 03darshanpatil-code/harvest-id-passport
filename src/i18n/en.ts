@@ -389,6 +389,37 @@ export const en = {
     "The passport was not persisted. Please check the backend connection and try again.",
   "store.requestFailed": "Request failed",
   "store.defaultActivityTitle": "Field activity",
+
+  // --- Time-aware greeting ---
+  "dashboard.greetingMorning": "Good morning, {name} 👋",
+  "dashboard.greetingAfternoon": "Good afternoon, {name} 👋",
+  "dashboard.greetingEvening": "Good evening, {name} 👋",
+  "dashboard.greetingNight": "Good night, {name} 👋",
+
+  // --- AI assistant voice ---
+  "assistant.mic": "Voice input",
+  "assistant.speak": "Speak",
+  "assistant.stop": "Stop",
+  "assistant.autoSpeak": "Auto-speak",
+  "assistant.voiceUnsupported": "Voice output is not supported in this browser.",
+
+  // --- GPS location ---
+  "gps.useMyLocation": "Use my current location",
+  "gps.denied": "Location permission was denied.",
+  "gps.unavailable": "Your location could not be found.",
+  "gps.timeout": "Location lookup timed out. Try again.",
+  "gps.unsupported": "Location services are not supported in this browser.",
+  "gps.locating": "Getting your location…",
+  "crop.gpsPlaceholder": "Latitude, Longitude (e.g. 12.9716, 77.5946)",
+
+  // --- Crop image alt ---
+  "cropImage.alt": "Photo of the {name} crop",
+
+  // --- Settings: AI voice ---
+  "settings.voice": "AI voice",
+  "settings.voiceDesc": "Have AI answers read aloud and control voice preferences.",
+  "settings.autoSpeak": "Auto-speak AI answers",
+  "settings.autoSpeakDesc": "Read each new AI answer aloud automatically.",
 } as const;
 
 export type TranslationKey = keyof typeof en;

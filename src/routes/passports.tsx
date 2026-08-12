@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useHarvest } from "@/lib/harvest-store";
 import { useI18n } from "@/i18n";
+import { localizeCropName } from "@/lib/crop-l10n";
 
 export const Route = createFileRoute("/passports")({
   head: () => ({
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/passports")({
 
 function PassportsPage() {
   const { crops } = useHarvest();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   return (
     <AppLayout title={t("passports.title")} subtitle={t("passports.subtitle")}>
@@ -56,7 +57,9 @@ function PassportsPage() {
                   t("passports.pending")
                 )}
               </Badge>
-              <h3 className="mt-2 truncate text-lg font-semibold">{c.name}</h3>
+              <h3 className="mt-2 truncate text-lg font-semibold">
+                {localizeCropName(c.name, c.variety, lang)}
+              </h3>
               <p className="truncate text-sm text-muted-foreground">
                 {c.variety} · {c.id}
               </p>

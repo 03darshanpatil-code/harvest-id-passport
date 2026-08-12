@@ -153,7 +153,7 @@ export function AppLayout({
               </Button>
               <Link
                 to="/settings"
-                aria-label="Profile"
+                aria-label={t("nav.profile")}
                 className="grid size-10 place-items-center rounded-full bg-secondary font-display text-sm font-semibold text-secondary-foreground"
               >
                 {profile.fullName

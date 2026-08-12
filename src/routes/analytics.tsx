@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Sprout } from "lucide-react";
 import { useHarvest } from "@/lib/harvest-store";
 import { useI18n } from "@/i18n";
+import { localizeCropName } from "@/lib/crop-l10n";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -40,7 +41,7 @@ const chartTooltipStyle = {
 
 function AnalyticsPage() {
   const { crops, activities, loading, error } = useHarvest();
-  const { t } = useI18n();
+  const { t, locale, lang } = useI18n();
 
   // Real monthly documentation trend, derived from stored activity records.
   const trend = useMemo(() => {
@@ -49,7 +50,7 @@ function AnalyticsPage() {
       const date = new Date(activity.date);
       if (Number.isNaN(date.getTime())) continue;
       const key = `${date.getFullYear()}-${date.getMonth()}`;
-      const label = date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+      const label = date.toLocaleDateString(locale, { month: "short", year: "2-digit" });
       const current = buckets.get(key) ?? { month: label, records: 0 };
       current.records += 1;
       buckets.set(key, current);
@@ -58,9 +59,12 @@ function AnalyticsPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-8)
       .map(([, value]) => value);
-  }, [activities]);
+  }, [activities, locale]);
 
-  const byCrop = useMemo(() => crops.map((c) => ({ name: c.name, score: c.score })), [crops]);
+  const byCrop = useMemo(
+    () => crops.map((c) => ({ name: localizeCropName(c.name, c.variety, lang), score: c.score })),
+    [crops, lang],
+  );
 
   return (
     <AppLayout title={t("analytics.title")} subtitle={t("analytics.subtitle")}>

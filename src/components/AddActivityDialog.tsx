@@ -283,7 +283,7 @@ export function AddActivityDialog({
 
           {photo ? (
             <div className="overflow-hidden rounded-2xl border border-border">
-              <img src={photo} alt="Field photo preview" className="max-h-56 w-full object-cover" />
+              <img src={photo} alt={t("activity.photoAttached")} className="max-h-56 w-full object-cover" />
               <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-3 py-2">
                 <span className="text-xs text-muted-foreground">{t("activity.photoAttached")}</span>
                 <Button

@@ -17,8 +17,12 @@ export function Timeline({ items }: { items: Activity[] }) {
 
   return (
     <ol className="relative ml-3 border-l border-border">
-      {items.map((a) => (
-        <li key={a.id} className="relative pb-8 pl-8 last:pb-0">
+      {items.map((a, index) => (
+        <li
+          key={a.id}
+          className="animate-fade-up relative pb-8 pl-8 last:pb-0"
+          style={{ animationDelay: `${Math.min(index, 10) * 50}ms` }}
+        >
           <span className="absolute -left-[19px] grid size-9 place-items-center rounded-full border border-border bg-card text-base shadow-soft">
             {activityMeta[a.kind].emoji}
           </span>

@@ -28,6 +28,7 @@ import { formatDate, useCrop, useHarvest } from "@/lib/harvest-store";
 import { CropImage } from "@/components/CropImage";
 import { buildPassportUrl } from "@/lib/crop-images";
 import { useI18n } from "@/i18n";
+import { localizeCropName } from "@/lib/crop-l10n";
 
 export const Route = createFileRoute("/passport/$cropId")({
   head: () => ({
@@ -52,9 +53,10 @@ function PassportPage() {
   const { cropId } = useParams({ from: "/passport/$cropId" });
   const { crop, timeline } = useCrop(cropId);
   const { generatePassport, error } = useHarvest();
-  const { t, locale } = useI18n();
+  const { t, locale, lang } = useI18n();
   const [generating, setGenerating] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const displayName = crop ? localizeCropName(crop.name, crop.variety, lang) : "";
 
   if (!crop) {
     return (
@@ -107,7 +109,7 @@ function PassportPage() {
       <header className="relative overflow-hidden">
         <CropImage
           crop={crop}
-          alt={`${crop.variety} from ${crop.farmName}`}
+          alt={t("cropImage.alt", { name: displayName })}
           width={1024}
           height={768}
           className="h-56 w-full object-cover sm:h-72"
@@ -118,7 +120,7 @@ function PassportPage() {
             <BadgeCheck className="size-3.5" /> {t("passport.badge")}
           </Badge>
           <h1 className="mt-3 font-display text-3xl font-semibold text-white sm:text-4xl">
-            {crop.name} · {crop.variety}
+            {displayName} · {crop.variety}
           </h1>
           <p className="mt-1 flex items-center gap-1.5 text-sm text-white/85">
             <MapPin className="size-4" /> {crop.location} · ID {crop.id}
@@ -243,7 +245,7 @@ function PassportPage() {
               {t("passport.readyTitle")}
             </DialogTitle>
             <DialogDescription className="text-center">
-              {t("passport.readyDesc", { name: crop.name })}
+              {t("passport.readyDesc", { name: displayName })}
             </DialogDescription>
           </DialogHeader>
           <div className="mx-auto"><QrCode value={crop.id} size={140} /></div>

@@ -183,3 +183,127 @@
     box-shadow: var(--shadow-lift);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * HarvestID motion system — lightweight CSS/SVG only (no 3D engine).
+ * Every animation is disabled for users who prefer reduced motion.
+ * --------------------------------------------------------------------------- */
+
+@keyframes harvest-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes harvest-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes harvest-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes harvest-pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes harvest-eq {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@utility animate-float {
+  animation: harvest-float 6s ease-in-out infinite;
+}
+
+@utility animate-fade-up {
+  animation: harvest-fade-up 0.5s ease-out both;
+}
+
+@utility field-glow {
+  background:
+    radial-gradient(
+      120% 140% at 15% 0%,
+      color-mix(in oklab, var(--primary-soft) 45%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      120% 140% at 85% 100%,
+      color-mix(in oklab, var(--gold) 22%, transparent),
+      transparent 55%
+    );
+}
+
+@utility ai-orb {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: 2px solid color-mix(in oklab, var(--gold) 80%, white 20%);
+    animation: harvest-pulse-ring 2.2s ease-out infinite;
+  }
+}
+
+@utility equalizer {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  & span {
+    width: 3px;
+    border-radius: 2px;
+    background: currentColor;
+    animation: harvest-eq 0.9s ease-in-out infinite;
+    transform-origin: bottom;
+  }
+  & span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  & span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

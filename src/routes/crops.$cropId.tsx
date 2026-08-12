@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, useCrop } from "@/lib/harvest-store";
 import { CropImage } from "@/components/CropImage";
 import { useI18n } from "@/i18n";
+import { localizeCropName } from "@/lib/crop-l10n";
 
 export const Route = createFileRoute("/crops/$cropId")({
   head: () => ({
@@ -41,8 +42,9 @@ export const Route = createFileRoute("/crops/$cropId")({
 function CropDetails() {
   const { cropId } = useParams({ from: "/crops/$cropId" });
   const { crop, timeline } = useCrop(cropId);
-  const { t, locale } = useI18n();
+  const { t, locale, lang } = useI18n();
   const [tab, setTab] = useState("timeline");
+  const displayName = crop ? localizeCropName(crop.name, crop.variety, lang) : "";
 
   if (!crop) {
     return (
@@ -68,11 +70,11 @@ function CropDetails() {
   ];
 
   return (
-    <AppLayout title={crop.name} subtitle={crop.variety}>
+    <AppLayout title={displayName} subtitle={crop.variety}>
       <section className="relative overflow-hidden rounded-3xl shadow-lift">
         <CropImage
           crop={crop}
-          alt={`${crop.variety} growing at ${crop.farmName}`}
+          alt={t("cropImage.alt", { name: displayName })}
           width={1024}
           height={768}
           className="h-64 w-full object-cover sm:h-80"
@@ -83,7 +85,7 @@ function CropDetails() {
             <Badge className="rounded-full bg-card/90 text-foreground hover:bg-card/90">
               {crop.id}
             </Badge>
-            <h2 className="mt-3 truncate font-display text-3xl font-semibold">{crop.name}</h2>
+            <h2 className="mt-3 truncate font-display text-3xl font-semibold">{displayName}</h2>
             <p className="truncate text-sm opacity-90">
               {crop.variety} · {crop.stage}
             </p>
@@ -158,7 +160,7 @@ function CropDetails() {
             </Badge>
             <p className="mt-3 text-sm leading-relaxed">
               {t("cropDetails.aiSummaryText", {
-                name: crop.name,
+                name: displayName,
                 variety: crop.variety,
                 farm: crop.farmName,
                 location: crop.location,

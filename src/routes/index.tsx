@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   FileText,
@@ -20,8 +20,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { activityMeta, timeAgo, useHarvest } from "@/lib/harvest-store";
 import { parseCropIdFromQr } from "@/lib/crop-images";
-import { useI18n } from "@/i18n";
+import { useI18n, type TranslationKey } from "@/i18n";
+import { localizeCropName } from "@/lib/crop-l10n";
 import hero from "@/assets/hero-farm.jpg";
+
+/** Time-aware greeting period, based on the device's local time. */
+function greetingKeyForHour(hour: number): TranslationKey {
+  if (hour >= 5 && hour < 12) return "dashboard.greetingMorning";
+  if (hour >= 12 && hour < 17) return "dashboard.greetingAfternoon";
+  if (hour >= 17 && hour < 21) return "dashboard.greetingEvening";
+  return "dashboard.greetingNight";
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -44,9 +53,16 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const { crops, activities, error, loading, profile, refreshData } = useHarvest();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [scannerOpen, setScannerOpen] = useState(false);
+  // Refresh once a minute so the greeting follows the actual time.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const greetingKey = greetingKeyForHour(now.getHours());
   const recent = [...activities].sort((a, b) => +new Date(b.date) - +new Date(a.date)).slice(0, 4);
   const avg = Math.round(crops.reduce((s, c) => s + c.score, 0) / Math.max(crops.length, 1));
 
@@ -109,18 +125,44 @@ function Dashboard() {
       <section className="relative overflow-hidden rounded-3xl glass-hero shadow-lift">
         <img
           src={hero}
-          alt="Aerial view of terraced green farmland"
+          alt=""
+          aria-hidden="true"
           width={1600}
           height={900}
           className="absolute inset-0 size-full object-cover opacity-25"
         />
+        <div aria-hidden="true" className="field-glow pointer-events-none absolute inset-0 opacity-70" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 hidden select-none sm:block"
+        >
+          <span className="animate-float absolute left-[6%] top-8 text-3xl opacity-25">🌾</span>
+          <span
+            className="animate-float absolute right-[26%] top-12 text-2xl opacity-20"
+            style={{ animationDelay: "1.2s" }}
+          >
+            🌱
+          </span>
+          <span
+            className="animate-float absolute bottom-10 left-[22%] text-2xl opacity-20"
+            style={{ animationDelay: "2s" }}
+          >
+            ☀️
+          </span>
+          <span
+            className="animate-float absolute bottom-12 right-[10%] text-3xl opacity-25"
+            style={{ animationDelay: "0.6s" }}
+          >
+            💧
+          </span>
+        </div>
         <div className="relative grid gap-6 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
             <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
               <Sparkles className="size-3" /> {t("dashboard.aiBadge")}
             </Badge>
             <h2 className="mt-4 font-display text-3xl font-semibold sm:text-4xl">
-              {t("dashboard.greeting", {
+              {t(greetingKey, {
                 name: profile.fullName.split(" ")[0] || t("dashboard.greetingDefaultName"),
               })}
             </h2>
@@ -157,8 +199,12 @@ function Dashboard() {
       ) : null}
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="card-soft lift p-5">
+        {stats.map((s, index) => (
+          <div
+            key={s.label}
+            className="card-soft lift animate-fade-up p-5"
+            style={{ animationDelay: `${index * 70}ms` }}
+          >
             <div className="grid size-11 place-items-center rounded-2xl bg-secondary text-secondary-foreground">
               <s.icon className="size-5" />
             </div>
@@ -187,7 +233,11 @@ function Dashboard() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{a.title}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {crops.find((c) => c.id === a.cropId)?.name} · {a.note}
+                    {(() => {
+                      const crop = crops.find((c) => c.id === a.cropId);
+                      return crop ? localizeCropName(crop.name, crop.variety, lang) : "";
+                    })()}
+                    {a.note ? ` · ${a.note}` : ""}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(a.date, t)}</span>
@@ -201,22 +251,14 @@ function Dashboard() {
             <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
               🤖 {t("dashboard.aiRecommendation")}
             </Badge>
-            <p className="mt-4 text-sm leading-relaxed">
-              {(() => {
-                const days = daysSince(stale.lastDate);
-                if (days === null) {
-                  return (
-                    <>
-                      {t("dashboard.noActivityYet", { crop: stale.crop.name })}
-                    </>
-                  );
-                }
-                return (
-                  <>
-                    {t("dashboard.staleActivity", { crop: stale.crop.name, days })}
-                  </>
-                );
-              })()}
+            <p className="mt-4 text-sm leading-relaxed">                  {(() => {
+                    const days = daysSince(stale.lastDate);
+                    const cropName = localizeCropName(stale.crop.name, stale.crop.variety, lang);
+                    if (days === null) {
+                      return <>{t("dashboard.noActivityYet", { crop: cropName })}</>;
+                    }
+                    return <>{t("dashboard.staleActivity", { crop: cropName, days })}</>;
+                  })()}
             </p>
             <AddActivityDialog
               cropId={stale.crop.id}

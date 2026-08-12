@@ -591,18 +591,44 @@ const MULTI_WORD_KEYS = Object.keys({ ...CATALOG, ...ALIASES })
   .filter((key) => key.includes(" "))
   .sort((a, b) => b.length - a.length);
 
-function lookup(normalized: string): string | null {
+/** Canonical catalog/alias key for a normalized crop string, or null. */
+function lookupKey(normalized: string): string | null {
   if (!normalized) return null;
   const viaAlias = ALIASES[normalized];
-  if (viaAlias && CATALOG[viaAlias]) return CATALOG[viaAlias];
-  if (CATALOG[normalized]) return CATALOG[normalized];
+  if (viaAlias && CATALOG[viaAlias]) return viaAlias;
+  if (CATALOG[normalized]) return normalized;
   for (const key of MULTI_WORD_KEYS) {
     if (normalized.includes(key)) {
       const target = ALIASES[key] || key;
-      if (CATALOG[target]) return CATALOG[target];
+      if (CATALOG[target]) return target;
     }
   }
   return null;
+}
+
+/**
+ * Resolve the canonical crop key ("tomato", "maize", "eggplant" ...) for a
+ * farmer-entered name + variety. Returns null for unknown crops. Used both by
+ * the image resolver and by the localized display-name layer so both stay in
+ * sync on the same canonical key.
+ */
+export function resolveCropKey(name = "", variety = ""): string | null {
+  const parts = [name, variety].map((p) => normalizeCropName(p)).filter(Boolean);
+  const haystack = parts.join(" ").replace(/\s+/g, " ").trim();
+  if (!haystack) return null;
+
+  const direct = lookupKey(haystack);
+  if (direct) return direct;
+
+  // Token match: "Hybrid Tomato" -> tomato, "Desi Mango" -> mango.
+  // Later occurrences win so "Cherry Tomato" resolves to tomato, not cherry.
+  let best: string | null = null;
+  for (const token of haystack.split(" ")) {
+    if (token.length < 2 || STOP_WORDS.has(token)) continue;
+    const hit = lookupKey(token);
+    if (hit) best = hit;
+  }
+  return best;
 }
 
 /**
@@ -622,23 +648,8 @@ export function resolveCropImage(
   if (typeof existingImage === "string" && existingImage.startsWith("data:")) {
     return existingImage;
   }
-
-  const parts = [name, variety].map((p) => normalizeCropName(p)).filter(Boolean);
-  const haystack = parts.join(" ").replace(/\s+/g, " ").trim();
-  if (!haystack) return CROP_IMAGE_UNAVAILABLE;
-
-  const direct = lookup(haystack);
-  if (direct) return direct;
-
-  // Token match: "Hybrid Tomato" -> tomato, "Desi Mango" -> mango.
-  // Later occurrences win so "Cherry Tomato" resolves to tomato, not cherry.
-  let best: string | null = null;
-  for (const token of haystack.split(" ")) {
-    if (token.length < 2 || STOP_WORDS.has(token)) continue;
-    const hit = lookup(token);
-    if (hit) best = hit;
-  }
-  return best ?? CROP_IMAGE_UNAVAILABLE;
+  const key = resolveCropKey(name, variety);
+  return key && CATALOG[key] ? CATALOG[key] : CROP_IMAGE_UNAVAILABLE;
 }
 
 /** True when the stored image is a farmer upload rather than a catalog URL. */
