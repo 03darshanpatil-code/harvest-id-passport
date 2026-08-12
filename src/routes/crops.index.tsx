@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus, Sprout } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { CropCard } from "@/components/CropCard";
+import { HarvestIDLogo } from "@/components/HarvestIDLogo";
 import { Button } from "@/components/ui/button";
 import { useHarvest } from "@/lib/harvest-store";
 import { useI18n } from "@/i18n";
@@ -53,7 +54,7 @@ function CropsPage() {
         </div>
       ) : crops.length === 0 ? (
         <div className="card-soft mt-6 grid place-items-center gap-3 p-16 text-center">
-          <span className="text-5xl">🌱</span>
+          <HarvestIDLogo size={64} decorative />
           <p className="text-lg font-semibold">{t("crops.emptyTitle")}</p>
           <p className="max-w-sm text-sm text-muted-foreground">
             {t("crops.emptyDesc")}

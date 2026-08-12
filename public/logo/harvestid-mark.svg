@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HarvestID">
+  <defs>
+    <linearGradient id="hvid-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#26814f"/>
+      <stop offset="1" stop-color="#0e5636"/>
+    </linearGradient>
+    <linearGradient id="hvid-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5ce6d"/>
+      <stop offset="1" stop-color="#de9f2e"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="15" fill="url(#hvid-bg)"/>
+  <!-- wheat head -->
+  <g fill="url(#hvid-gold)">
+    <ellipse cx="32" cy="15" rx="3" ry="5.5"/>
+    <ellipse cx="26.5" cy="18.5" rx="3" ry="5.5" transform="rotate(-24 26.5 18.5)"/>
+    <ellipse cx="37.5" cy="18.5" rx="3" ry="5.5" transform="rotate(24 37.5 18.5)"/>
+  </g>
+  <!-- stem -->
+  <path d="M32 20 V44" stroke="url(#hvid-gold)" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- leaves -->
+  <path d="M32 42 C26.5 42 22 45.5 21.5 52 C27.5 51.5 31.5 47.5 32 42 Z" fill="url(#hvid-gold)"/>
+  <path d="M32 42 C37.5 42 42 45.5 42.5 52 C36.5 51.5 32.5 47.5 32 42 Z" fill="url(#hvid-gold)"/>
+</svg>

@@ -4,7 +4,6 @@ import {
   FileText,
   Home,
   Languages,
-  LayoutGrid,
   Plus,
   ScrollText,
   Settings,
@@ -12,6 +11,7 @@ import {
   User,
   QrCode as QrIcon,
 } from "lucide-react";
+import { HarvestIDLogo } from "@/components/HarvestIDLogo";
 import { useCallback, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -36,21 +36,22 @@ const nav = [
   { to: "/settings", labelKey: "nav.settings" as TranslationKey, icon: Settings },
 ] as const;
 
-function Brand() {
+function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useI18n();
   return (
-    <Link to="/" className="flex items-center gap-2.5">
-      <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-soft">
-        <LayoutGrid className="size-5" />
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate font-display text-lg font-semibold leading-tight">
-          HarvestID
+    <Link
+      to="/"
+      aria-label="HarvestID"
+      className="flex min-w-0 items-center gap-2.5"
+    >
+      <HarvestIDLogo variant="full" size={compact ? 34 : 40} />
+      {!compact ? (
+        <span className="hidden min-w-0 lg:block">
+          <span className="block truncate text-[11px] text-muted-foreground">
+            {t("brand.tagline")}
+          </span>
         </span>
-        <span className="block truncate text-[11px] text-muted-foreground">
-          {t("brand.tagline")}
-        </span>
-      </span>
+      ) : null}
     </Link>
   );
 }
@@ -113,16 +114,23 @@ export function AppLayout({
           <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3.5 sm:px-6">
             <div className="min-w-0">
               <div className="lg:hidden">
-                <Brand />
+                <Brand compact />
               </div>
-              {title ? (
-                <div className="hidden lg:block">
-                  <h1 className="truncate text-xl font-semibold">{title}</h1>
-                  {subtitle ? (
-                    <p className="truncate text-sm text-muted-foreground">{subtitle}</p>
-                  ) : null}
-                </div>
-              ) : null}
+              <div className="hidden items-center gap-3 lg:flex">
+                <HarvestIDLogo
+                  variant="full"
+                  size={32}
+                  className="hidden xl:flex"
+                />
+                {title ? (
+                  <div className="min-w-0">
+                    <h1 className="truncate text-xl font-semibold">{title}</h1>
+                    {subtitle ? (
+                      <p className="truncate text-sm text-muted-foreground">{subtitle}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <Select value={lang} onValueChange={(value) => setLang(value as LanguageCode)}>

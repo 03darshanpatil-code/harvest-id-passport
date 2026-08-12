@@ -3,12 +3,12 @@ import { useState } from "react";
 import {
   BadgeCheck,
   Download,
-  Leaf,
   MapPin,
   Share2,
   Sparkles,
   FileText,
 } from "lucide-react";
+import { HarvestIDLogo } from "@/components/HarvestIDLogo";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -115,6 +115,14 @@ function PassportPage() {
           className="h-56 w-full object-cover sm:h-72"
         />
         <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/35 to-transparent" />
+        <div className="absolute left-4 top-4 sm:left-6 sm:top-6">
+          <HarvestIDLogo
+            variant="full"
+            size={28}
+            wordmarkClassName="text-white"
+            className="[&_img]:rounded-xl [&_img]:shadow-md"
+          />
+        </div>
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-6 sm:px-6">
           <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
             <BadgeCheck className="size-3.5" /> {t("passport.badge")}
@@ -232,7 +240,7 @@ function PassportPage() {
         </section>
 
         <footer className="mt-10 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <Leaf className="size-4 text-primary" />
+          <HarvestIDLogo size={18} decorative />
           {t("passport.footer")}
         </footer>
       </div>

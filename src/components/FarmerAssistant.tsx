@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { HarvestIDLogo } from "@/components/HarvestIDLogo";
 import {
   Select,
   SelectContent,
@@ -491,8 +492,16 @@ export function FarmerAssistant() {
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
             {messages.length === 0 ? (
               <div className="rounded-2xl border border-gold/40 bg-gold/10 p-3.5 text-sm leading-relaxed">
-                <Sparkles className="mb-1.5 size-4 text-gold" />
-                {t("assistant.greeting")}
+                <div className="mb-2 flex items-center gap-2">
+                  <HarvestIDLogo size={22} decorative />
+                  <span className="font-display text-xs font-semibold uppercase tracking-wide text-gold-foreground">
+                    HarvestID
+                  </span>
+                </div>
+                <p className="flex items-start gap-1.5">
+                  <Sparkles className="mt-0.5 size-4 shrink-0 text-gold" />
+                  <span>{t("assistant.greeting")}</span>
+                </p>
               </div>
             ) : (
               messages.map((message, index) => (
