@@ -1,16 +1,16 @@
 import { Sparkles, Mic, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { activityMeta, formatDate, formatTime, type Activity } from "@/lib/harvest-store";
+import { useI18n } from "@/i18n";
 
 export function Timeline({ items }: { items: Activity[] }) {
+  const { t } = useI18n();
   if (items.length === 0) {
     return (
       <div className="grid place-items-center gap-2 rounded-2xl border border-dashed border-border p-10 text-center">
         <span className="text-4xl">🧾</span>
-        <p className="text-sm font-medium">No activities recorded yet.</p>
-        <p className="text-xs text-muted-foreground">
-          Add your first field note to start the timeline.
-        </p>
+        <p className="text-sm font-medium">{t("timeline.emptyTitle")}</p>
+        <p className="text-xs text-muted-foreground">{t("timeline.emptyDesc")}</p>
       </div>
     );
   }
@@ -32,12 +32,12 @@ export function Timeline({ items }: { items: Activity[] }) {
               </div>
               <div className="flex shrink-0 gap-1.5">
                 {(a.media === "photo" || a.media === "mixed") && (
-                  <span className="grid size-8 place-items-center rounded-xl bg-muted" title="Photo evidence">
+                  <span className="grid size-8 place-items-center rounded-xl bg-muted" title={t("timeline.photoEvidence")}>
                     <ImageIcon className="size-4 text-muted-foreground" />
                   </span>
                 )}
                 {(a.media === "voice" || a.media === "mixed") && (
-                  <span className="grid size-8 place-items-center rounded-xl bg-muted" title="Voice note">
+                  <span className="grid size-8 place-items-center rounded-xl bg-muted" title={t("timeline.voiceNote")}>
                     <Mic className="size-4 text-muted-foreground" />
                   </span>
                 )}
@@ -49,7 +49,7 @@ export function Timeline({ items }: { items: Activity[] }) {
             {a.photo ? (
               <img
                 src={a.photo}
-                alt={`Field evidence for ${a.title}`}
+                alt={t("timeline.fieldEvidence", { title: a.title })}
                 loading="lazy"
                 onError={(event) => {
                   // A broken attachment disappears rather than showing an unrelated photo.
@@ -73,11 +73,11 @@ export function Timeline({ items }: { items: Activity[] }) {
             {a.aiEnhanced ? (
               <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-gold/10 p-3">
                 <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-                  <Sparkles className="size-3" /> Enhanced by AI
+                  <Sparkles className="size-3" /> {t("activity.enhancedByAi")}
                 </Badge>
                 <span className="min-w-0 flex-1 text-xs text-muted-foreground">
                   {a.aiSummary}
-                  {a.confidence ? ` · ${a.confidence}% confidence` : ""}
+                  {a.confidence ? ` · ${t("timeline.confidence", { confidence: a.confidence })}` : ""}
                 </span>
               </div>
             ) : null}

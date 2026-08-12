@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, useCrop } from "@/lib/harvest-store";
 import { CropImage } from "@/components/CropImage";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/crops/$cropId")({
   head: () => ({
@@ -40,16 +41,17 @@ export const Route = createFileRoute("/crops/$cropId")({
 function CropDetails() {
   const { cropId } = useParams({ from: "/crops/$cropId" });
   const { crop, timeline } = useCrop(cropId);
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState("timeline");
 
   if (!crop) {
     return (
-      <AppLayout title="Crop">
+      <AppLayout title={t("cropDetails.title")}>
         <div className="card-soft grid place-items-center gap-3 p-16 text-center">
           <span className="text-5xl">🌱</span>
-          <p className="text-lg font-semibold">We couldn't find this crop.</p>
+          <p className="text-lg font-semibold">{t("crops.notFound")}</p>
           <Button asChild className="rounded-2xl">
-            <Link to="/crops">Back to my crops</Link>
+            <Link to="/crops">{t("crops.backToMyCrops")}</Link>
           </Button>
         </div>
       </AppLayout>
@@ -57,12 +59,12 @@ function CropDetails() {
   }
 
   const info = [
-    { label: "Farmer", value: crop.farmer, icon: User },
-    { label: "Farm", value: crop.farmName, icon: Warehouse },
-    { label: "Location", value: crop.location, icon: MapPin },
-    { label: "Area", value: crop.area, icon: Ruler },
-    { label: "Planted on", value: formatDate(crop.plantedOn), icon: CalendarDays },
-    { label: "Expected harvest", value: formatDate(crop.harvestOn), icon: CalendarDays },
+    { label: t("cropDetails.farmer"), value: crop.farmer, icon: User },
+    { label: t("cropDetails.farm"), value: crop.farmName, icon: Warehouse },
+    { label: t("cropDetails.location"), value: crop.location, icon: MapPin },
+    { label: t("cropDetails.area"), value: crop.area, icon: Ruler },
+    { label: t("cropDetails.plantedOn"), value: formatDate(crop.plantedOn, locale), icon: CalendarDays },
+    { label: t("cropDetails.expectedHarvest"), value: formatDate(crop.harvestOn, locale), icon: CalendarDays },
   ];
 
   return (
@@ -89,9 +91,9 @@ function CropDetails() {
           <div className="glass-panel flex items-center gap-3 rounded-3xl p-3 text-foreground">
             <ScoreRing score={crop.score} />
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Traceability</p>
+              <p className="text-xs text-muted-foreground">{t("cropDetails.traceability")}</p>
               <p className="truncate text-sm font-semibold">
-                {crop.passport ? "Passport issued" : "Passport pending"}
+                {crop.passport ? t("cropDetails.passportIssued") : t("cropDetails.passportPending")}
               </p>
             </div>
           </div>
@@ -103,7 +105,7 @@ function CropDetails() {
           cropId={crop.id}
           trigger={
             <Button className="h-12 flex-1 rounded-2xl sm:flex-none sm:px-6">
-              <Plus className="size-5" /> Add activity
+              <Plus className="size-5" /> {t("cropDetails.addActivity")}
             </Button>
           }
         />
@@ -112,11 +114,11 @@ function CropDetails() {
           className="h-12 flex-1 rounded-2xl sm:flex-none sm:px-6"
           onClick={() => setTab("timeline")}
         >
-          <Sparkles className="size-5" /> View timeline
+          <Sparkles className="size-5" /> {t("cropDetails.viewTimeline")}
         </Button>
         <Button asChild variant="outline" className="h-12 flex-1 rounded-2xl sm:flex-none sm:px-6">
           <Link to="/passport/$cropId" params={{ cropId: crop.id }}>
-            <FileText className="size-5" /> Generate passport
+            <FileText className="size-5" /> {t("cropDetails.generatePassport")}
           </Link>
         </Button>
       </div>
@@ -138,10 +140,10 @@ function CropDetails() {
       <Tabs value={tab} onValueChange={setTab} className="mt-8">
         <TabsList className="rounded-2xl">
           <TabsTrigger value="timeline" className="rounded-xl">
-            Timeline
+            {t("cropDetails.timeline")}
           </TabsTrigger>
           <TabsTrigger value="insights" className="rounded-xl">
-            AI insights
+            {t("cropDetails.aiInsights")}
           </TabsTrigger>
         </TabsList>
 
@@ -152,24 +154,28 @@ function CropDetails() {
         <TabsContent value="insights" className="mt-5 grid gap-4">
           <div className="card-soft border-gold/40 bg-gold/10 p-5">
             <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-              <Sparkles className="size-3" /> AI traceability summary
+              <Sparkles className="size-3" /> {t("cropDetails.aiSummaryBadge")}
             </Badge>
             <p className="mt-3 text-sm leading-relaxed">
-              {crop.name} ({crop.variety}) was cultivated at {crop.farmName}, {crop.location} across{" "}
-              {crop.area}. {timeline.length} field activities were documented between{" "}
-              {formatDate(crop.plantedOn)} and today, including irrigation, organic nutrition and
-              pest scouting. Records show consistent documentation with photo and voice evidence and
-              no synthetic chemical applications logged.
+              {t("cropDetails.aiSummaryText", {
+                name: crop.name,
+                variety: crop.variety,
+                farm: crop.farmName,
+                location: crop.location,
+                area: crop.area,
+                count: timeline.length,
+                planted: formatDate(crop.plantedOn, locale),
+              })}
             </p>
           </div>
 
           <div className="card-soft p-5">
-            <h3 className="text-base font-semibold">Documentation quality</h3>
+            <h3 className="text-base font-semibold">{t("cropDetails.documentationQuality")}</h3>
             <div className="mt-4 grid gap-4">
               {[
-                { label: "Activity frequency", value: Math.min(99, 60 + timeline.length * 6) },
-                { label: "Media evidence", value: crop.score - 4 },
-                { label: "Origin verification", value: crop.gps ? 99 : 70 },
+                { label: t("cropDetails.activityFrequency"), value: Math.min(99, 60 + timeline.length * 6) },
+                { label: t("cropDetails.mediaEvidence"), value: crop.score - 4 },
+                { label: t("cropDetails.originVerification"), value: crop.gps ? 99 : 70 },
               ].map((row) => (
                 <div key={row.label}>
                   <div className="mb-1.5 flex items-center justify-between text-sm">
@@ -185,7 +191,7 @@ function CropDetails() {
           <div className="card-soft flex items-start gap-3 p-5">
             <ShieldCheck className="size-6 shrink-0 text-primary" />
             <p className="text-sm text-muted-foreground">
-              Buyers see this summary as read-only inside the digital crop passport.
+              {t("cropDetails.buyersReadOnly")}
             </p>
           </div>
         </TabsContent>

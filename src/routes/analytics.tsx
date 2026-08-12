@@ -15,6 +15,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Sprout } from "lucide-react";
 import { useHarvest } from "@/lib/harvest-store";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -39,6 +40,7 @@ const chartTooltipStyle = {
 
 function AnalyticsPage() {
   const { crops, activities, loading, error } = useHarvest();
+  const { t } = useI18n();
 
   // Real monthly documentation trend, derived from stored activity records.
   const trend = useMemo(() => {
@@ -61,10 +63,10 @@ function AnalyticsPage() {
   const byCrop = useMemo(() => crops.map((c) => ({ name: c.name, score: c.score })), [crops]);
 
   return (
-    <AppLayout title="Analytics" subtitle="Documentation performance">
-      <h2 className="font-display text-2xl font-semibold">Farm analytics</h2>
+    <AppLayout title={t("analytics.title")} subtitle={t("analytics.subtitle")}>
+      <h2 className="font-display text-2xl font-semibold">{t("analytics.heading")}</h2>
       <p className="text-sm text-muted-foreground">
-        Traceability improves as you record more field activity.
+        {t("analytics.tagline")}
       </p>
 
       {error ? (
@@ -76,31 +78,31 @@ function AnalyticsPage() {
       {!loading && crops.length === 0 ? (
         <div className="card-soft mt-6 grid place-items-center gap-3 p-16 text-center">
           <span className="text-5xl">📊</span>
-          <p className="text-lg font-semibold">No data to analyse yet.</p>
+          <p className="text-lg font-semibold">{t("analytics.emptyTitle")}</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Register your first crop and record field activities to see real statistics here.
+            {t("analytics.emptyDesc")}
           </p>
           <Button asChild className="mt-2 rounded-2xl">
             <Link to="/crops/new">
-              <Sprout className="size-4" /> Register crop
+              <Sprout className="size-4" /> {t("analytics.registerCrop")}
             </Link>
           </Button>
         </div>
       ) : (
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <div className="card-soft p-5">
-            <h3 className="text-base font-semibold">Documentation trend</h3>
-            <p className="text-xs text-muted-foreground">Field activities recorded per month</p>
+            <h3 className="text-base font-semibold">{t("analytics.trendTitle")}</h3>
+            <p className="text-xs text-muted-foreground">{t("analytics.trendSubtitle")}</p>
             <div className="mt-4 h-64">
               {loading ? (
                 <div className="grid h-full place-items-center text-sm text-muted-foreground">
-                  Loading data…
+                  {t("common.loadingData")}
                 </div>
               ) : trend.length === 0 ? (
                 <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
-                  No activities recorded yet.
+                  {t("analytics.noActivitiesYet")}
                   <br />
-                  Add a field note to start the trend.
+                  {t("analytics.addNoteToStart")}
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -123,16 +125,16 @@ function AnalyticsPage() {
           </div>
 
           <div className="card-soft p-5">
-            <h3 className="text-base font-semibold">Score by crop</h3>
-            <p className="text-xs text-muted-foreground">Live traceability score per crop</p>
+            <h3 className="text-base font-semibold">{t("analytics.scoreByCrop")}</h3>
+            <p className="text-xs text-muted-foreground">{t("analytics.scoreByCropSubtitle")}</p>
             <div className="mt-4 h-64">
               {loading ? (
                 <div className="grid h-full place-items-center text-sm text-muted-foreground">
-                  Loading data…
+                  {t("common.loadingData")}
                 </div>
               ) : byCrop.length === 0 ? (
                 <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
-                  No crops registered yet.
+                  {t("analytics.noCropsYet")}
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">

@@ -5,6 +5,7 @@ import {
   CROP_IMAGE_UNAVAILABLE,
   resolveCropImage,
 } from "@/lib/crop-images";
+import { useI18n } from "@/i18n";
 
 type CropLike = {
   name: string;
@@ -35,6 +36,7 @@ export function CropImage({
   width?: number;
   height?: number;
 }) {
+  const { t } = useI18n();
   const src = useMemo(
     () => resolveCropImage(crop.name, crop.variety, crop.category, crop.image),
     [crop.name, crop.variety, crop.category, crop.image],
@@ -55,7 +57,7 @@ export function CropImage({
           <span className="grid size-11 place-items-center rounded-full bg-secondary text-secondary-foreground">
             <Sprout className="size-5" />
           </span>
-          <p className="text-xs font-medium text-muted-foreground">Crop image unavailable</p>
+          <p className="text-xs font-medium text-muted-foreground">{t("cropImage.unavailable")}</p>
         </div>
       </div>
     );

@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { CropCard } from "@/components/CropCard";
 import { Button } from "@/components/ui/button";
 import { useHarvest } from "@/lib/harvest-store";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/crops/")({
   head: () => ({
@@ -22,19 +23,20 @@ export const Route = createFileRoute("/crops/")({
 
 function CropsPage() {
   const { crops, loading, error } = useHarvest();
+  const { t } = useI18n();
 
   return (
-    <AppLayout title="My Crops" subtitle={`${crops.length} registered crops`}>
+    <AppLayout title={t("crops.title")} subtitle={t("crops.subtitle", { count: crops.length })}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="min-w-0">
-          <h2 className="truncate font-display text-2xl font-semibold">My crops</h2>
+          <h2 className="truncate font-display text-2xl font-semibold">{t("crops.heading")}</h2>
           <p className="truncate text-sm text-muted-foreground">
-            Each crop carries its own verifiable identity.
+            {t("crops.tagline")}
           </p>
         </div>
         <Button asChild className="h-12 rounded-2xl">
           <Link to="/crops/new">
-            <Plus className="size-5" /> Register crop
+            <Plus className="size-5" /> {t("crops.registerCrop")}
           </Link>
         </Button>
       </div>
@@ -47,18 +49,18 @@ function CropsPage() {
 
       {loading ? (
         <div className="mt-6 rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-          Loading crops from the database…
+          {t("crops.loading")}
         </div>
       ) : crops.length === 0 ? (
         <div className="card-soft mt-6 grid place-items-center gap-3 p-16 text-center">
           <span className="text-5xl">🌱</span>
-          <p className="text-lg font-semibold">You haven't registered your first crop.</p>
+          <p className="text-lg font-semibold">{t("crops.emptyTitle")}</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Register a crop to start building its digital identity.
+            {t("crops.emptyDesc")}
           </p>
           <Button asChild className="mt-2 rounded-2xl">
             <Link to="/crops/new">
-              <Sprout className="size-4" /> Register crop
+              <Sprout className="size-4" /> {t("crops.registerCrop")}
             </Link>
           </Button>
         </div>

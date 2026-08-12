@@ -5,12 +5,14 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { Crop } from "@/lib/harvest-store";
 import { CropImage } from "@/components/CropImage";
+import { useI18n } from "@/i18n";
 
 export function ScoreRing({ score, size = 64 }: { score: number; size?: number }) {
+  const { t } = useI18n();
   const r = 26;
   const circ = 2 * Math.PI * r;
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={`Traceability score ${score} percent`}>
+    <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={t("cropCard.scoreAria", { score })}>
       <circle cx="32" cy="32" r={r} fill="none" stroke="var(--color-muted)" strokeWidth="7" />
       <circle
         cx="32"
@@ -37,6 +39,7 @@ export function ScoreRing({ score, size = 64 }: { score: number; size?: number }
 }
 
 export function CropCard({ crop }: { crop: Crop }) {
+  const { t } = useI18n();
   return (
     <article className="card-soft lift group overflow-hidden">
       <div className="relative aspect-[16/10] overflow-hidden">
@@ -53,7 +56,7 @@ export function CropCard({ crop }: { crop: Crop }) {
           </Badge>
           {crop.passport ? (
             <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-              <ShieldCheck className="size-3.5" /> Passport
+              <ShieldCheck className="size-3.5" /> {t("cropCard.passportBadge")}
             </Badge>
           ) : null}
         </div>
@@ -74,7 +77,7 @@ export function CropCard({ crop }: { crop: Crop }) {
       <div className="px-5">
         <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Sparkles className="size-3.5 text-gold" /> Traceability
+            <Sparkles className="size-3.5 text-gold" /> {t("cropCard.traceability")}
           </span>
           <span>{crop.score}%</span>
         </div>
@@ -84,12 +87,12 @@ export function CropCard({ crop }: { crop: Crop }) {
       <div className="flex flex-wrap gap-2 p-5">
         <Button asChild className="flex-1 rounded-2xl">
           <Link to="/crops/$cropId" params={{ cropId: crop.id }}>
-            View details
+            {t("cropCard.viewDetails")}
           </Link>
         </Button>
         <Button asChild variant="secondary" className="flex-1 rounded-2xl">
           <Link to="/passport/$cropId" params={{ cropId: crop.id }}>
-            {crop.passport ? "View passport" : "Generate passport"}
+            {crop.passport ? t("cropCard.viewPassport") : t("cropCard.generatePassport")}
           </Link>
         </Button>
       </div>

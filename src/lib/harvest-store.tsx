@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { resolveCropImage, buildPassportUrl, parseCropIdFromQr } from "@/lib/crop-images";
+import { useI18n, type TranslationKey } from "@/i18n";
 
 export type ActivityKind =
   | "sowing"
@@ -107,7 +108,7 @@ type ActivityApiRow = {
   audio?: unknown;
 };
 
-const API_BASE_URL = (() => {
+export const API_BASE_URL = (() => {
   const configured = (import.meta.env["VITE_API_BASE_URL"] || "").trim().replace(/\/$/, "");
 
   if (configured) return configured;
@@ -173,7 +174,7 @@ function normalizeCrop(row: CropApiRow): Crop {
   };
 }
 
-function normalizeActivity(row: ActivityApiRow): Activity {
+function normalizeActivity(row: ActivityApiRow, fallbackTitle = "Field activity"): Activity {
   const aiSummary = typeof row.ai_summary === "string" ? row.ai_summary : undefined;
   const confidence = typeof row.confidence === "number" ? row.confidence : undefined;
   const photo = typeof row.photo === "string" ? row.photo : undefined;
@@ -183,7 +184,7 @@ function normalizeActivity(row: ActivityApiRow): Activity {
     id: String(row.id ?? ""),
     cropId: String(row.crop_id || row.cropId || ""),
     kind: (row.kind as ActivityKind) || "sowing",
-    title: String(row.title || "Field activity"),
+    title: String(row.title || fallbackTitle),
     note: String(row.note || ""),
     date: String(row.date || row.created_at || new Date().toISOString()),
     media: (row.media as Activity["media"]) || "text",
@@ -289,6 +290,7 @@ type Store = {
 const HarvestContext = createContext<Store | null>(null);
 
 export function HarvestProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [crops, setCrops] = useState<Crop[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -313,13 +315,13 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
         apiRequest<ApiEnvelope<ActivityApiRow[]>>("/api/activities"),
       ]);
       setCrops((cropPayload.data || []).map(normalizeCrop));
-      setActivities((activityPayload.data || []).map(normalizeActivity));
+      setActivities((activityPayload.data || []).map((row) => normalizeActivity(row, t("store.defaultActivityTitle"))));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load data");
+      setError(err instanceof Error ? err.message : t("store.unableToLoadData"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const refreshProfile = useCallback(async () => {
     setProfileLoading(true);
@@ -328,12 +330,12 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
       const response = await apiRequest<ApiEnvelope<FarmerProfile>>("/api/profile");
       if (response.data) setProfile(response.data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to load profile";
+      const message = err instanceof Error ? err.message : t("store.unableToLoadProfile");
       setProfileError(message);
     } finally {
       setProfileLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const saveProfile = useCallback(async (updates: Partial<FarmerProfile>) => {
     setProfileLoading(true);
@@ -348,13 +350,13 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
       setProfile(nextProfile);
       return nextProfile;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to save profile";
+      const message = err instanceof Error ? err.message : t("store.unableToSaveProfile");
       setProfileError(message);
       throw new Error(message);
     } finally {
       setProfileLoading(false);
     }
-  }, [profile]);
+  }, [profile, t]);
 
   useEffect(() => {
     void refreshData();
@@ -384,11 +386,11 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
       setCrops((prev) => [crop, ...prev]);
       return crop;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to save crop";
+      const message = err instanceof Error ? err.message : t("store.unableToSaveCrop");
       setError(message);
       throw err;
     }
-  }, []);
+  }, [t]);
 
   const updateCrop: Store["updateCrop"] = useCallback(async (cropId, updates) => {
     setError(null);
@@ -400,17 +402,17 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
       });
       const updated = Array.isArray(response.data) ? response.data[0] : response.data;
       if (!updated) {
-        throw new Error("The crop update did not persist. Please try again.");
+        throw new Error(t("store.updateNotPersisted"));
       }
       const normalized = normalizeCrop(updated as CropApiRow);
       setCrops((prev) => prev.map((crop) => (crop.id === cropId ? normalized : crop)));
       return normalized;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to update crop";
+      const message = err instanceof Error ? err.message : t("store.unableToUpdateCrop");
       setError(message);
       throw err;
     }
-  }, []);
+  }, [t]);
 
   const deleteCrop: Store["deleteCrop"] = useCallback(async (cropId) => {
     setError(null);
@@ -419,11 +421,11 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
       setCrops((prev) => prev.filter((crop) => crop.id !== cropId));
       setActivities((prev) => prev.filter((activity) => activity.cropId !== cropId));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to delete crop";
+      const message = err instanceof Error ? err.message : t("store.unableToDeleteCrop");
       setError(message);
       throw err;
     }
-  }, []);
+  }, [t]);
 
   const addActivity: Store["addActivity"] = useCallback(async (data) => {
     setError(null);
@@ -435,17 +437,17 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
       });
       const created = Array.isArray(response.data) ? response.data[0] : response.data;
       if (!created) return;
-      const activity = normalizeActivity(created as ActivityApiRow);
+      const activity = normalizeActivity(created as ActivityApiRow, t("store.defaultActivityTitle"));
       setActivities((prev) => [activity, ...prev]);
       setCrops((prev) =>
         prev.map((crop) => (crop.id === activity.cropId ? { ...crop, score: Math.min(99, crop.score + 2) } : crop)),
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to save activity";
+      const message = err instanceof Error ? err.message : t("store.unableToSaveActivity");
       setError(message);
       throw err;
     }
-  }, []);
+  }, [t]);
 
   const generatePassport: Store["generatePassport"] = useCallback(async (cropId) => {
     setError(null);
@@ -457,20 +459,20 @@ export function HarvestProvider({ children }: { children: ReactNode }) {
       });
       const updated = Array.isArray(response.data) ? response.data[0] : response.data;
       if (!updated) {
-        throw new Error("The passport could not be issued. Please try again.");
+        throw new Error(t("store.passportNotIssued"));
       }
       const normalized = normalizeCrop(updated as CropApiRow);
       // Only confirm once the backend actually reports the passport as issued.
       if (!normalized.passport) {
-        throw new Error("The passport was not persisted. Please check the backend connection and try again.");
+        throw new Error(t("store.passportNotPersisted"));
       }
       setCrops((prev) => prev.map((crop) => (crop.id === cropId ? normalized : crop)));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unable to generate passport";
+      const message = err instanceof Error ? err.message : t("store.unableToGeneratePassport");
       setError(message);
       throw err;
     }
-  }, []);
+  }, [t]);
 
   const value = useMemo(
     () => ({
@@ -512,15 +514,15 @@ export function useCrop(cropId: string) {
   };
 }
 
-export const activityMeta: Record<ActivityKind, { label: string; emoji: string }> = {
-  sowing: { label: "Sowing", emoji: "🌱" },
-  irrigation: { label: "Irrigation", emoji: "💧" },
-  fertilizer: { label: "Fertilizer", emoji: "🪴" },
-  pest: { label: "Pest Monitoring", emoji: "🐛" },
-  weeding: { label: "Weeding", emoji: "🌿" },
-  flowering: { label: "Flowering", emoji: "🌼" },
-  photo: { label: "Photo Record", emoji: "📷" },
-  harvest: { label: "Harvest", emoji: "🌾" },
+export const activityMeta: Record<ActivityKind, { labelKey: TranslationKey; emoji: string }> = {
+  sowing: { labelKey: "activity.kind.sowing", emoji: "🌱" },
+  irrigation: { labelKey: "activity.kind.irrigation", emoji: "💧" },
+  fertilizer: { labelKey: "activity.kind.fertilizer", emoji: "🪴" },
+  pest: { labelKey: "activity.kind.pest", emoji: "🐛" },
+  weeding: { labelKey: "activity.kind.weeding", emoji: "🌿" },
+  flowering: { labelKey: "activity.kind.flowering", emoji: "🌼" },
+  photo: { labelKey: "activity.kind.photo", emoji: "📷" },
+  harvest: { labelKey: "activity.kind.harvest", emoji: "🌾" },
 };
 
 function parseDate(d: string): Date | null {
@@ -529,29 +531,46 @@ function parseDate(d: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-export function formatDate(d: string) {
+type TranslateFn = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
+function enFallback(key: TranslationKey, params?: Record<string, string | number>): string {
+  const enMessages: Record<string, string> = {
+    "timeline.justNow": "just now",
+    "timeline.hoursAgo": "{count} hrs ago",
+    "timeline.yesterday": "yesterday",
+    "timeline.daysAgo": "{count} days ago",
+  };
+  const template = enMessages[key] ?? key;
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
+}
+
+export function formatDate(d: string, locale = "en-IN") {
   const date = parseDate(d);
   if (!date) return "—";
-  return date.toLocaleDateString("en-IN", {
+  return date.toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 }
 
-export function formatTime(d: string) {
+export function formatTime(d: string, locale = "en-IN") {
   const date = parseDate(d);
   if (!date) return "—";
-  return date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
-export function timeAgo(d: string) {
+export function timeAgo(d: string, translate?: TranslateFn) {
   const date = parseDate(d);
   if (!date) return "—";
+  const tr = translate ?? enFallback;
   const diff = Date.now() - +date;
   const hours = Math.round(diff / 3_600_000);
-  if (hours < 1) return "just now";
-  if (hours < 24) return `${hours} hrs ago`;
+  if (hours < 1) return tr("timeline.justNow");
+  if (hours < 24) return tr("timeline.hoursAgo", { count: hours });
   const days = Math.round(hours / 24);
-  return days === 1 ? "yesterday" : `${days} days ago`;
+  return days === 1 ? tr("timeline.yesterday") : tr("timeline.daysAgo", { count: days });
 }

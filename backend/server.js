@@ -6,6 +6,7 @@ const supabase = require("./config/supabase");
 const harvestRoutes = require("./routes/harvest");
 const activityRoutes = require("./routes/activities");
 const profileRoutes = require("./routes/profile");
+const aiRoutes = require("./routes/ai");
 
 const app = express();
 
@@ -18,6 +19,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use("/api/harvest", harvestRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/profile", profileRoutes);
+// Multilingual AI farm assistant — secret key stays in Render env vars.
+app.use("/api/chat", aiRoutes);
 
 app.get("/", (req, res) => {
   res.json({ success: true, message: "Welcome to HarvestID API 🌱" });

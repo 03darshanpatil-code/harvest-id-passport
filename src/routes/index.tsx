@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { activityMeta, timeAgo, useHarvest } from "@/lib/harvest-store";
 import { parseCropIdFromQr } from "@/lib/crop-images";
+import { useI18n } from "@/i18n";
 import hero from "@/assets/hero-farm.jpg";
 
 export const Route = createFileRoute("/")({
@@ -43,24 +44,25 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const { crops, activities, error, loading, profile, refreshData } = useHarvest();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [scannerOpen, setScannerOpen] = useState(false);
   const recent = [...activities].sort((a, b) => +new Date(b.date) - +new Date(a.date)).slice(0, 4);
   const avg = Math.round(crops.reduce((s, c) => s + c.score, 0) / Math.max(crops.length, 1));
 
   const stats = [
-    { label: "Total crops", value: crops.length, icon: Sprout },
+    { label: t("dashboard.totalCrops"), value: crops.length, icon: Sprout },
     {
-      label: "Active crops",
+      label: t("dashboard.activeCrops"),
       value: crops.filter((c) => c.stage !== "Harvested").length,
       icon: TrendingUp,
     },
     {
-      label: "Harvest ready",
+      label: t("dashboard.harvestReady"),
       value: crops.filter((c) => c.stage === "Harvest Ready").length,
       icon: Wheat,
     },
-    { label: "Avg. traceability", value: `${avg}%`, icon: Sparkles },
+    { label: t("dashboard.avgTraceability"), value: `${avg}%`, icon: Sparkles },
   ];
 
   // Crop with the oldest (or missing) activity record — drives the AI card.
@@ -91,19 +93,19 @@ function Dashboard() {
     (decodedText: string) => {
       const cropId = parseCropIdFromQr(decodedText);
       if (!cropId) {
-        toast.error("QR code not recognised", {
-          description: "This doesn't look like a HarvestID passport code.",
+        toast.error(t("qr.notRecognised"), {
+          description: t("qr.notRecognisedDesc"),
         });
         return;
       }
       setScannerOpen(false);
       navigate({ to: "/passport/$cropId", params: { cropId } });
     },
-    [navigate],
+    [navigate, t],
   );
 
   return (
-    <AppLayout title="Dashboard" subtitle="Your farm at a glance">
+    <AppLayout title={t("dashboard.title")} subtitle={t("dashboard.subtitle")}>
       <section className="relative overflow-hidden rounded-3xl glass-hero shadow-lift">
         <img
           src={hero}
@@ -115,20 +117,21 @@ function Dashboard() {
         <div className="relative grid gap-6 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
             <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-              <Sparkles className="size-3" /> AI documentation active
+              <Sparkles className="size-3" /> {t("dashboard.aiBadge")}
             </Badge>
             <h2 className="mt-4 font-display text-3xl font-semibold sm:text-4xl">
-              Good morning, {profile.fullName.split(" ")[0] || "Farmer"} 👋
+              {t("dashboard.greeting", {
+                name: profile.fullName.split(" ")[0] || t("dashboard.greetingDefaultName"),
+              })}
             </h2>
             <p className="mt-2 max-w-lg text-sm text-primary-foreground/85 sm:text-base">
-              Let's grow with confidence. Every note you record today becomes verifiable proof for
-              your buyers tomorrow.
+              {t("dashboard.heroText")}
             </p>
           </div>
           <div className="glass-panel rounded-3xl p-5 text-foreground">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Farm score</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t("dashboard.farmScore")}</p>
             <p className="font-display text-4xl font-semibold">{avg}%</p>
-            <p className="mt-1 text-xs text-muted-foreground">Across {crops.length} registered crops</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("dashboard.acrossCrops", { count: crops.length })}</p>
           </div>
         </div>
       </section>
@@ -142,14 +145,14 @@ function Dashboard() {
             className="shrink-0 rounded-2xl"
             onClick={() => void refreshData()}
           >
-            Retry
+            {t("common.retry")}
           </Button>
         </div>
       ) : null}
 
       {loading ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-          Loading farm data from the API…
+          {t("dashboard.loadingFarmData")}
         </div>
       ) : null}
 
@@ -168,10 +171,10 @@ function Dashboard() {
       <section className="mt-6 grid gap-4 lg:grid-cols-3">
         <div className="card-soft p-5 lg:col-span-2">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-            <h3 className="truncate text-lg font-semibold">Recent activities</h3>
+            <h3 className="truncate text-lg font-semibold">{t("dashboard.recentActivities")}</h3>
             <Button asChild variant="ghost" size="sm" className="rounded-2xl">
               <Link to="/activities">
-                View all <ArrowRight className="size-4" />
+                {t("dashboard.viewAll")} <ArrowRight className="size-4" />
               </Link>
             </Button>
           </div>
@@ -187,7 +190,7 @@ function Dashboard() {
                     {crops.find((c) => c.id === a.cropId)?.name} · {a.note}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(a.date)}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(a.date, t)}</span>
               </li>
             ))}
           </ul>
@@ -196,7 +199,7 @@ function Dashboard() {
         {stale ? (
           <div className="card-soft border-gold/40 bg-gold/10 p-5">
             <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-              🤖 AI recommendation
+              🤖 {t("dashboard.aiRecommendation")}
             </Badge>
             <p className="mt-4 text-sm leading-relaxed">
               {(() => {
@@ -204,16 +207,13 @@ function Dashboard() {
                 if (days === null) {
                   return (
                     <>
-                      Your <strong>{stale.crop.name}</strong> crop has no documented activity yet.
-                      Record the first field note to start building its passport.
+                      {t("dashboard.noActivityYet", { crop: stale.crop.name })}
                     </>
                   );
                 }
                 return (
                   <>
-                    Your <strong>{stale.crop.name}</strong> crop has not received an activity update
-                    for {days} day{days === 1 ? "" : "s"}. Record today's progress to keep the
-                    traceability score climbing.
+                    {t("dashboard.staleActivity", { crop: stale.crop.name, days })}
                   </>
                 );
               })()}
@@ -222,7 +222,7 @@ function Dashboard() {
               cropId={stale.crop.id}
               trigger={
                 <Button className="mt-4 w-full rounded-2xl">
-                  <Plus className="size-4" /> Record now
+                  <Plus className="size-4" /> {t("dashboard.recordNow")}
                 </Button>
               }
             />
@@ -233,7 +233,7 @@ function Dashboard() {
       <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Button asChild size="lg" className="h-14 rounded-2xl">
           <Link to="/crops/new">
-            <Sprout className="size-5" /> Register crop
+            <Sprout className="size-5" /> {t("dashboard.registerCrop")}
           </Link>
         </Button>
         <AddActivityDialog
@@ -244,15 +244,15 @@ function Dashboard() {
               variant="secondary"
               className="h-14 rounded-2xl"
               disabled={!crops.length}
-              title={crops.length ? undefined : "Register a crop before adding activities"}
+              title={crops.length ? undefined : t("dashboard.addActivityDisabled")}
             >
-              <Plus className="size-5" /> Add activity
+              <Plus className="size-5" /> {t("dashboard.addActivity")}
             </Button>
           }
         />
         <Button asChild size="lg" variant="secondary" className="h-14 rounded-2xl">
           <Link to="/passports">
-            <FileText className="size-5" /> Generate passport
+            <FileText className="size-5" /> {t("dashboard.generatePassport")}
           </Link>
         </Button>
         <Button
@@ -261,16 +261,16 @@ function Dashboard() {
           className="h-14 rounded-2xl"
           onClick={() => setScannerOpen(true)}
         >
-          <ScanLine className="size-5" /> Scan QR
+          <ScanLine className="size-5" /> {t("dashboard.scanQr")}
         </Button>
       </section>
 
       <section className="mt-8">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <h3 className="truncate text-lg font-semibold">Active crops</h3>
+          <h3 className="truncate text-lg font-semibold">{t("dashboard.activeCropsTitle")}</h3>
           <Button asChild variant="ghost" size="sm" className="rounded-2xl">
             <Link to="/crops">
-              All crops <ArrowRight className="size-4" />
+              {t("dashboard.allCrops")} <ArrowRight className="size-4" />
             </Link>
           </Button>
         </div>
@@ -288,11 +288,8 @@ function Dashboard() {
           <QrCode className="size-7" />
         </span>
         <div className="min-w-0">
-          <h3 className="text-lg font-semibold">Buyers verify in one scan</h3>
-          <p className="text-sm text-muted-foreground">
-            Every passport is a read-only page with origin, timeline, media evidence and an AI
-            traceability summary.
-          </p>
+          <h3 className="text-lg font-semibold">{t("dashboard.buyersVerify")}</h3>
+          <p className="text-sm text-muted-foreground">{t("dashboard.buyersVerifyDesc")}</p>
         </div>
       </section>
     </AppLayout>

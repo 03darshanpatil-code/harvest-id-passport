@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { activityMeta, useHarvest, type ActivityKind } from "@/lib/harvest-store";
+import { useI18n } from "@/i18n";
 
 const guesses: { match: string[]; kind: ActivityKind; category: string }[] = [
   { match: ["fertil", "compost", "manure", "urea"], kind: "fertilizer", category: "Nutrition" },
@@ -60,6 +61,7 @@ export function AddActivityDialog({
   trigger: React.ReactNode;
 }) {
   const { addActivity } = useHarvest();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [kind, setKind] = useState<ActivityKind>("irrigation");
@@ -93,7 +95,7 @@ export function AddActivityDialog({
 
   const enhance = () => {
     if (!note.trim()) {
-      toast.error("Write a short note first", { description: "Even a few words are enough." });
+      toast.error(t("activity.writeNoteFirst"), { description: t("activity.writeNoteFirstDesc") });
       return;
     }
     const lower = note.toLowerCase();
@@ -101,37 +103,37 @@ export function AddActivityDialog({
     const resolved = found?.kind ?? kind;
     setKind(resolved);
     setAi({
-      title: activityMeta[resolved].label,
+      title: t(activityMeta[resolved].labelKey),
       description:
         note.trim().replace(/\s+/g, " ").replace(/^./, (c) => c.toUpperCase()).replace(/\.?$/, "."),
-      category: found?.category ?? "General Field Work",
+      category: found?.category ?? t("activity.categoryGeneral"),
       confidence: found ? 98 : 86,
     });
-    toast.success("Enhanced by AI", { description: "Note formatted and categorised." });
+    toast.success(t("activity.enhancedByAi"), { description: t("activity.enhancedByAiDesc") });
   };
 
   const attachPhoto = async (file: File | undefined | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file");
+      toast.error(t("activity.imageFileError"));
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      toast.error("Image is too large", { description: "Keep photos under 5 MB." });
+      toast.error(t("activity.imageTooLarge"), { description: t("activity.imageTooLargeDesc") });
       return;
     }
     try {
       const dataUrl = await readFileAsDataUrl(file);
       setPhoto(dataUrl);
     } catch {
-      toast.error("Could not read that image", { description: "Please try another photo." });
+      toast.error(t("activity.imageReadError"), { description: t("activity.imageReadErrorDesc") });
     }
   };
 
   const startVoice = async () => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      toast.error("Voice recording is not supported", {
-        description: "This browser cannot record audio.",
+      toast.error(t("activity.voiceUnsupported"), {
+        description: t("activity.voiceUnsupportedDesc"),
       });
       return;
     }
@@ -147,20 +149,20 @@ export function AddActivityDialog({
         const blob = new Blob(chunksRef.current, { type });
         const reader = new FileReader();
         reader.onload = () => setAudio(String(reader.result));
-        reader.onerror = () => toast.error("Could not save the voice note");
+        reader.onerror = () => toast.error(t("activity.voiceSaveError"));
         reader.readAsDataURL(blob);
         stream.getTracks().forEach((track) => track.stop());
       };
       recorder.onerror = () => {
-        toast.error("Recording failed", { description: "Please try again." });
+        toast.error(t("activity.recordingFailed"), { description: t("activity.recordingFailedDesc") });
         setRecording(false);
       };
       recorder.start();
       recorderRef.current = recorder;
       setRecording(true);
     } catch {
-      toast.error("Microphone unavailable", {
-        description: "Check the microphone permission and try again.",
+      toast.error(t("activity.micUnavailable"), {
+        description: t("activity.micUnavailableDesc"),
       });
     }
   };
@@ -175,7 +177,7 @@ export function AddActivityDialog({
 
   const save = async () => {
     if (!note.trim()) {
-      toast.error("Nothing to save yet");
+      toast.error(t("activity.nothingToSave"));
       return;
     }
     if (saving) return;
@@ -184,7 +186,7 @@ export function AddActivityDialog({
       await addActivity({
         cropId,
         kind,
-        title: ai?.title ?? activityMeta[kind].label,
+        title: ai?.title ?? t(activityMeta[kind].labelKey),
         note: ai?.description ?? note.trim(),
         date: new Date().toISOString(),
         media,
@@ -193,14 +195,14 @@ export function AddActivityDialog({
         ...(photo ? { photo } : {}),
         ...(audio ? { audio } : {}),
       });
-      toast.success("Activity recorded", { description: "Timeline and score updated." });
+      toast.success(t("activity.recorded"), { description: t("activity.recordedDesc") });
       setNote("");
       setAi(null);
       setPhoto(null);
       setAudio(null);
       setOpen(false);
     } catch {
-      toast.error("Unable to save activity", { description: "Please try again in a moment." });
+      toast.error(t("activity.saveError"), { description: t("activity.saveErrorDesc") });
     } finally {
       setSaving(false);
     }
@@ -211,9 +213,9 @@ export function AddActivityDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">Add activity</DialogTitle>
+          <DialogTitle className="font-display text-2xl">{t("activity.add")}</DialogTitle>
           <DialogDescription>
-            Record what happened in the field today. AI will format it for the passport.
+            {t("activity.dialogDesc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -225,7 +227,7 @@ export function AddActivityDialog({
               className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-muted/40 p-3 text-xs font-medium transition-colors hover:border-primary hover:bg-accent"
             >
               <Camera className="size-5 text-primary" />
-              Take photo
+              {t("activity.takePhoto")}
             </button>
             <button
               type="button"
@@ -233,7 +235,7 @@ export function AddActivityDialog({
               className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-muted/40 p-3 text-xs font-medium transition-colors hover:border-primary hover:bg-accent"
             >
               <Upload className="size-5 text-primary" />
-              Upload
+              {t("activity.upload")}
             </button>
             <button
               type="button"
@@ -245,7 +247,7 @@ export function AddActivityDialog({
               }`}
             >
               <Mic className={`size-5 ${recording ? "animate-pulse text-destructive" : "text-primary"}`} />
-              {recording ? "Stop recording" : "Record voice"}
+              {recording ? t("activity.stopRecording") : t("activity.recordVoice")}
             </button>
             <button
               type="button"
@@ -253,7 +255,7 @@ export function AddActivityDialog({
               className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-border bg-muted/40 p-3 text-xs font-medium transition-colors hover:border-primary hover:bg-accent"
             >
               <PenLine className="size-5 text-primary" />
-              Write note
+              {t("activity.writeNote")}
             </button>
           </div>
 
@@ -283,7 +285,7 @@ export function AddActivityDialog({
             <div className="overflow-hidden rounded-2xl border border-border">
               <img src={photo} alt="Field photo preview" className="max-h-56 w-full object-cover" />
               <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-3 py-2">
-                <span className="text-xs text-muted-foreground">Photo attached</span>
+                <span className="text-xs text-muted-foreground">{t("activity.photoAttached")}</span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -291,7 +293,7 @@ export function AddActivityDialog({
                   className="h-8 gap-1 rounded-xl text-destructive"
                   onClick={() => setPhoto(null)}
                 >
-                  <Trash2 className="size-3.5" /> Remove
+                  <Trash2 className="size-3.5" /> {t("common.remove")}
                 </Button>
               </div>
             </div>
@@ -301,7 +303,7 @@ export function AddActivityDialog({
             <div className="rounded-2xl border border-border bg-muted/40 p-3">
               <audio controls src={audio} className="w-full" preload="metadata" />
               <div className="mt-2 flex items-center justify-between gap-3">
-                <span className="text-xs text-muted-foreground">Voice note attached</span>
+                <span className="text-xs text-muted-foreground">{t("activity.voiceAttached")}</span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -309,14 +311,14 @@ export function AddActivityDialog({
                   className="h-8 gap-1 rounded-xl text-destructive"
                   onClick={() => setAudio(null)}
                 >
-                  <Trash2 className="size-3.5" /> Remove
+                  <Trash2 className="size-3.5" /> {t("common.remove")}
                 </Button>
               </div>
             </div>
           ) : null}
 
           <div className="grid gap-2">
-            <Label htmlFor={`activity-type-${cropId}`}>Activity type</Label>
+            <Label htmlFor={`activity-type-${cropId}`}>{t("activity.type")}</Label>
             <Select value={kind} onValueChange={(v) => setKind(v as ActivityKind)}>
               <SelectTrigger id={`activity-type-${cropId}`} className="rounded-2xl">
                 <SelectValue />
@@ -324,7 +326,7 @@ export function AddActivityDialog({
               <SelectContent>
                 {Object.entries(activityMeta).map(([key, meta]) => (
                   <SelectItem key={key} value={key}>
-                    {meta.emoji} {meta.label}
+                    {meta.emoji} {t(meta.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -332,42 +334,42 @@ export function AddActivityDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor={`activity-note-${cropId}`}>Field note</Label>
+            <Label htmlFor={`activity-note-${cropId}`}>{t("activity.note")}</Label>
             <Textarea
               ref={noteRef}
               id={`activity-note-${cropId}`}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
-              placeholder="Applied fertilizer today."
+              placeholder={t("activity.notePlaceholder")}
               className="rounded-2xl"
             />
           </div>
 
           <Button type="button" variant="secondary" onClick={enhance} className="w-full gap-2 rounded-2xl">
-            <Sparkles className="size-4 text-gold" /> AI Enhance
+            <Sparkles className="size-4 text-gold" /> {t("activity.aiEnhance")}
           </Button>
 
           {ai ? (
             <div className="rounded-2xl border border-gold/40 bg-gold/10 p-4">
               <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-                <Sparkles className="size-3" /> Enhanced by AI
+                <Sparkles className="size-3" /> {t("activity.enhancedBadge")}
               </Badge>
               <dl className="mt-3 grid gap-2 text-sm">
                 <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2">
-                  <dt className="text-muted-foreground">Activity</dt>
+                  <dt className="text-muted-foreground">{t("activity.activity")}</dt>
                   <dd className="font-medium">{ai.title}</dd>
                 </div>
                 <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2">
-                  <dt className="text-muted-foreground">Description</dt>
+                  <dt className="text-muted-foreground">{t("activity.description")}</dt>
                   <dd>{ai.description}</dd>
                 </div>
                 <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2">
-                  <dt className="text-muted-foreground">Category</dt>
+                  <dt className="text-muted-foreground">{t("activity.category")}</dt>
                   <dd>{ai.category}</dd>
                 </div>
                 <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-2">
-                  <dt className="text-muted-foreground">Confidence</dt>
+                  <dt className="text-muted-foreground">{t("activity.confidence")}</dt>
                   <dd className="font-medium">{ai.confidence}%</dd>
                 </div>
               </dl>
@@ -377,15 +379,15 @@ export function AddActivityDialog({
 
         <DialogFooter className="gap-2">
           <Button variant="outline" className="rounded-2xl" onClick={() => setOpen(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button className="rounded-2xl" onClick={() => void save()} disabled={saving}>
             {saving ? (
               <>
-                <Loader2 className="size-4 animate-spin" /> Saving…
+                <Loader2 className="size-4 animate-spin" /> {t("common.saving")}
               </>
             ) : (
-              "Save activity"
+              t("activity.save")
             )}
           </Button>
         </DialogFooter>

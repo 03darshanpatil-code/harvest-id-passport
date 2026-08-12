@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useHarvest } from "@/lib/harvest-store";
 import { fileToResizedDataUrl } from "@/lib/crop-images";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/crops/new")({
   head: () => ({
@@ -42,6 +43,7 @@ const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 function RegisterCrop() {
   const { addCrop, profile } = useHarvest();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [form, setForm] = useState(() => ({
     ...blank,
@@ -58,13 +60,13 @@ function RegisterCrop() {
   const attachImage = async (file: File | undefined | null) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file", {
-        description: "The crop photo must be a JPG, PNG or similar image.",
+      toast.error(t("crop.imageError"), {
+        description: t("crop.imageErrorDesc"),
       });
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
-      toast.error("Image is too large", { description: "Keep the photo under 8 MB." });
+      toast.error(t("crop.imageTooLarge"), { description: t("crop.imageTooLargeDesc") });
       return;
     }
     setReadingImage(true);
@@ -72,7 +74,7 @@ function RegisterCrop() {
       const dataUrl = await fileToResizedDataUrl(file);
       setForm((f) => ({ ...f, image: dataUrl }));
     } catch {
-      toast.error("Could not read that image", { description: "Please try another photo." });
+      toast.error(t("crop.imageReadError"), { description: t("crop.imageReadErrorDesc") });
     } finally {
       setReadingImage(false);
     }
@@ -82,8 +84,8 @@ function RegisterCrop() {
     e.preventDefault();
     if (saving) return;
     if (!form.name.trim() || !form.location.trim()) {
-      toast.error("A crop name and location are needed", {
-        description: "These appear on the passport.",
+      toast.error(t("crop.needNameLocation"), {
+        description: t("crop.needNameLocationDesc"),
       });
       return;
     }
@@ -95,11 +97,11 @@ function RegisterCrop() {
         plantedOn: form.plantedOn || new Date().toISOString(),
         harvestOn: form.harvestOn || new Date().toISOString(),
       });
-      toast.success("Crop registered", { description: `${crop.name} now has ID ${crop.id}` });
+      toast.success(t("crop.registered"), { description: t("crop.registeredDesc", { name: crop.name, id: crop.id }) });
       navigate({ to: "/crops/$cropId", params: { cropId: crop.id } });
     } catch {
-      toast.error("Could not register crop", {
-        description: "Please check the backend connection and try again.",
+      toast.error(t("crop.registerError"), {
+        description: t("crop.registerErrorDesc"),
       });
     } finally {
       setSaving(false);
@@ -107,35 +109,34 @@ function RegisterCrop() {
   };
 
   return (
-    <AppLayout title="Register crop" subtitle="Takes under two minutes">
+    <AppLayout title={t("crops.registerCrop")} subtitle={t("crop.registerSubtitle")}>
       <form onSubmit={submit} className="mx-auto max-w-3xl">
-        <h2 className="font-display text-2xl font-semibold">Register a new crop</h2>
+        <h2 className="font-display text-2xl font-semibold">{t("crop.registerTitle")}</h2>
         <p className="text-sm text-muted-foreground">
-          These details form the identity section of the digital crop passport.
+          {t("crop.registerSubtitle")}
         </p>
 
-        <Section title="Crop details">
-          <Field id="name" label="Crop name" value={form.name} onChange={set("name")} placeholder="Tomato" />
-          <Field id="variety" label="Variety" value={form.variety} onChange={set("variety")} placeholder="Cherry Tomato" />
-          <Field id="category" label="Category" value={form.category} onChange={set("category")} />
-          <Field id="area" label="Farm size" value={form.area} onChange={set("area")} placeholder="2.5 acres" />
+        <Section title={t("crop.details")}>
+          <Field id="name" label={t("crop.name")} value={form.name} onChange={set("name")} placeholder={t("crop.namePlaceholder")} />
+          <Field id="variety" label={t("crop.variety")} value={form.variety} onChange={set("variety")} placeholder={t("crop.varietyPlaceholder")} />
+          <Field id="category" label={t("crop.category")} value={form.category} onChange={set("category")} />
+          <Field id="area" label={t("crop.farmSize")} value={form.area} onChange={set("area")} placeholder={t("crop.farmSizePlaceholder")} />
         </Section>
 
-        <Section title="Crop photo (optional)">
+        <Section title={t("crop.photo")}>
           <div className="grid gap-3 sm:col-span-2">
             <p className="text-sm text-muted-foreground">
-              Add a photo of your crop. If you skip this, HarvestID automatically picks a matching
-              crop image from the crop name.
+              {t("crop.photoHelp")}
             </p>
             {form.image ? (
               <div className="overflow-hidden rounded-2xl border border-border">
                 <img
                   src={form.image}
-                  alt="Crop photo preview"
+                  alt={t("crop.photoAttached")}
                   className="max-h-64 w-full object-cover"
                 />
                 <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-3 py-2">
-                  <span className="text-xs text-muted-foreground">Custom crop photo attached</span>
+                  <span className="text-xs text-muted-foreground">{t("crop.photoAttached")}</span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -143,7 +144,7 @@ function RegisterCrop() {
                     className="h-8 gap-1 rounded-xl text-destructive"
                     onClick={() => setForm((f) => ({ ...f, image: "" }))}
                   >
-                    <Trash2 className="size-3.5" /> Remove
+                    <Trash2 className="size-3.5" /> {t("common.remove")}
                   </Button>
                 </div>
               </div>
@@ -156,14 +157,14 @@ function RegisterCrop() {
                 {readingImage ? (
                   <>
                     <Loader2 className="size-6 animate-spin text-primary" />
-                    <span className="text-muted-foreground">Preparing image…</span>
+                    <span className="text-muted-foreground">{t("crop.preparingImage")}</span>
                   </>
                 ) : (
                   <>
                     <ImagePlus className="size-6 text-primary" />
-                    <span className="font-medium">Upload a crop photo</span>
+                    <span className="font-medium">{t("crop.uploadPhoto")}</span>
                     <span className="text-xs text-muted-foreground">
-                      JPG or PNG, up to 8 MB — resized automatically
+                      {t("crop.photoHint")}
                     </span>
                   </>
                 )}
@@ -182,16 +183,16 @@ function RegisterCrop() {
           </div>
         </Section>
 
-        <Section title="Farm information">
-          <Field id="farmer" label="Farmer name" value={form.farmer} onChange={set("farmer")} />
-          <Field id="farmName" label="Farm name" value={form.farmName} onChange={set("farmName")} />
-          <Field id="location" label="Farm location" value={form.location} onChange={set("location")} placeholder="Bengaluru, Karnataka" />
-          <Field id="gps" label="GPS coordinates (optional)" value={form.gps} onChange={set("gps")} placeholder="12.9716° N, 77.5946° E" />
+        <Section title={t("crop.farmInfo")}>
+          <Field id="farmer" label={t("crop.farmerName")} value={form.farmer} onChange={set("farmer")} />
+          <Field id="farmName" label={t("crop.farmName")} value={form.farmName} onChange={set("farmName")} />
+          <Field id="location" label={t("crop.farmLocation")} value={form.location} onChange={set("location")} placeholder={t("crop.farmLocationPlaceholder")} />
+          <Field id="gps" label={t("crop.gps")} value={form.gps} onChange={set("gps")} placeholder="12.9716° N, 77.5946° E" />
         </Section>
 
-        <Section title="Dates">
-          <Field id="plantedOn" label="Planting date" type="date" value={form.plantedOn} onChange={set("plantedOn")} />
-          <Field id="harvestOn" label="Expected harvest" type="date" value={form.harvestOn} onChange={set("harvestOn")} />
+        <Section title={t("crop.dates")}>
+          <Field id="plantedOn" label={t("crop.plantingDate")} type="date" value={form.plantedOn} onChange={set("plantedOn")} />
+          <Field id="harvestOn" label={t("crop.expectedHarvest")} type="date" value={form.harvestOn} onChange={set("harvestOn")} />
         </Section>
 
         <div className="mt-6 flex flex-wrap gap-3">
@@ -201,14 +202,14 @@ function RegisterCrop() {
             className="h-12 flex-1 rounded-2xl sm:flex-none"
             onClick={() => navigate({ to: "/crops" })}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             type="submit"
             className="h-12 flex-1 rounded-2xl sm:flex-none sm:px-10"
             disabled={saving}
           >
-            {saving ? "Saving…" : "Save crop"}
+            {saving ? t("common.saving") : t("crop.save")}
           </Button>
         </div>
       </form>

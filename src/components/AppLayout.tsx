@@ -17,17 +17,19 @@ import { toast } from "sonner";
 import { QrScannerDialog } from "@/components/QrScannerDialog";
 import { useHarvest } from "@/lib/harvest-store";
 import { parseCropIdFromQr } from "@/lib/crop-images";
+import { useI18n, type TranslationKey } from "@/i18n";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/crops", label: "My Crops", icon: Sprout },
-  { to: "/activities", label: "Activities", icon: ScrollText },
-  { to: "/passports", label: "Passports", icon: FileText },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/", labelKey: "nav.dashboard" as TranslationKey, icon: Home },
+  { to: "/crops", labelKey: "nav.myCrops" as TranslationKey, icon: Sprout },
+  { to: "/activities", labelKey: "nav.activities" as TranslationKey, icon: ScrollText },
+  { to: "/passports", labelKey: "nav.passports" as TranslationKey, icon: FileText },
+  { to: "/analytics", labelKey: "nav.analytics" as TranslationKey, icon: BarChart3 },
+  { to: "/settings", labelKey: "nav.settings" as TranslationKey, icon: Settings },
 ] as const;
 
 function Brand() {
+  const { t } = useI18n();
   return (
     <Link to="/" className="flex items-center gap-2.5">
       <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-soft">
@@ -38,7 +40,7 @@ function Brand() {
           HarvestID
         </span>
         <span className="block truncate text-[11px] text-muted-foreground">
-          Every harvest has an identity
+          {t("brand.tagline")}
         </span>
       </span>
     </Link>
@@ -56,6 +58,7 @@ export function AppLayout({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { profile } = useHarvest();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [scannerOpen, setScannerOpen] = useState(false);
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
@@ -64,15 +67,15 @@ export function AppLayout({
     (decodedText: string) => {
       const cropId = parseCropIdFromQr(decodedText);
       if (!cropId) {
-        toast.error("QR code not recognised", {
-          description: "This doesn't look like a HarvestID passport code.",
+        toast.error(t("qr.notRecognised"), {
+          description: t("qr.notRecognisedDesc"),
         });
         return;
       }
       setScannerOpen(false);
       navigate({ to: "/passport/$cropId", params: { cropId } });
     },
-    [navigate],
+    [navigate, t],
   );
 
   return (
@@ -91,7 +94,7 @@ export function AppLayout({
               }`}
             >
               <item.icon className="size-[18px] shrink-0" />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{t(item.labelKey)}</span>
             </Link>
           ))}
         </nav>
@@ -117,7 +120,7 @@ export function AppLayout({
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Scan QR code"
+                aria-label={t("nav.scanQr")}
                 className="min-h-11 min-w-11 rounded-2xl"
                 onClick={() => setScannerOpen(true)}
               >
@@ -144,22 +147,22 @@ export function AppLayout({
       {/* Mobile bottom navigation */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-xl lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2 py-2">
-          <BottomLink to="/" label="Home" icon={Home} active={isActive("/")} />
-          <BottomLink to="/crops" label="Crops" icon={Sprout} active={isActive("/crops")} />
+          <BottomLink to="/" label={t("nav.home")} icon={Home} active={isActive("/")} />
+          <BottomLink to="/crops" label={t("nav.crops")} icon={Sprout} active={isActive("/crops")} />
           <Link
             to="/crops/new"
-            aria-label="Register crop"
+            aria-label={t("nav.registerCrop")}
             className="mx-auto grid size-14 -translate-y-3 place-items-center rounded-full bg-primary text-primary-foreground shadow-lift"
           >
             <Plus className="size-6" />
           </Link>
           <BottomLink
             to="/passports"
-            label="Passport"
+            label={t("nav.passport")}
             icon={FileText}
             active={isActive("/passports")}
           />
-          <BottomLink to="/settings" label="Profile" icon={User} active={isActive("/settings")} />
+          <BottomLink to="/settings" label={t("nav.profile")} icon={User} active={isActive("/settings")} />
         </div>
       </nav>
 

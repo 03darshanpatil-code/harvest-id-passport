@@ -27,6 +27,7 @@ import { ScoreRing } from "@/components/CropCard";
 import { formatDate, useCrop, useHarvest } from "@/lib/harvest-store";
 import { CropImage } from "@/components/CropImage";
 import { buildPassportUrl } from "@/lib/crop-images";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/passport/$cropId")({
   head: () => ({
@@ -51,6 +52,7 @@ function PassportPage() {
   const { cropId } = useParams({ from: "/passport/$cropId" });
   const { crop, timeline } = useCrop(cropId);
   const { generatePassport, error } = useHarvest();
+  const { t, locale } = useI18n();
   const [generating, setGenerating] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
 
@@ -59,12 +61,12 @@ function PassportPage() {
       <main className="grid min-h-screen place-items-center bg-background px-4 text-center">
         <div>
           <p className="text-5xl">📄</p>
-          <h1 className="mt-4 font-display text-2xl font-semibold">Passport not found</h1>
+          <h1 className="mt-4 font-display text-2xl font-semibold">{t("passport.notFound")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This QR code doesn't match any crop in HarvestID.
+            {t("passport.notFoundDesc")}
           </p>
           <Button asChild className="mt-6 rounded-2xl">
-            <Link to="/">Go to HarvestID</Link>
+            <Link to="/">{t("passport.goToApp")}</Link>
           </Button>
         </div>
       </main>
@@ -77,7 +79,7 @@ function PassportPage() {
       await generatePassport(crop.id);
       setCelebrate(true);
     } catch {
-      toast.error("Could not generate passport", { description: "Please try again shortly." });
+      toast.error(t("passport.generateError"), { description: t("passport.generateErrorDesc") });
     } finally {
       setGenerating(false);
     }
@@ -87,16 +89,16 @@ function PassportPage() {
     const url = buildPassportUrl(crop.id);
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Passport link copied", { description: url });
+      toast.success(t("passport.linkCopied"), { description: url });
     } catch {
-      toast.error("Could not copy the link", {
-        description: "Copy the browser address bar instead.",
+      toast.error(t("passport.copyError"), {
+        description: t("passport.copyErrorDesc"),
       });
     }
   };
 
   const printPassport = () => {
-    toast.info("Opening print dialog — choose 'Save as PDF'");
+    toast.info(t("passport.printToast"));
     window.setTimeout(() => window.print(), 400);
   };
 
@@ -113,7 +115,7 @@ function PassportPage() {
         <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/35 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-6 sm:px-6">
           <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-            <BadgeCheck className="size-3.5" /> Digital Crop Passport
+            <BadgeCheck className="size-3.5" /> {t("passport.badge")}
           </Badge>
           <h1 className="mt-3 font-display text-3xl font-semibold text-white sm:text-4xl">
             {crop.name} · {crop.variety}
@@ -134,7 +136,7 @@ function PassportPage() {
           <section className="card-soft -mt-6 relative grid gap-4 p-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             {generating ? (
               <div className="grid gap-3 sm:col-span-2">
-                <p className="text-sm font-medium">Generating passport…</p>
+                <p className="text-sm font-medium">{t("passport.generating")}</p>
                 <Skeleton className="h-4 w-3/4 rounded-full" />
                 <Skeleton className="h-4 w-1/2 rounded-full" />
                 <Skeleton className="h-28 w-full rounded-2xl" />
@@ -142,13 +144,13 @@ function PassportPage() {
             ) : (
               <>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-semibold">This crop has no passport yet</h2>
+                  <h2 className="text-lg font-semibold">{t("passport.noPassportTitle")}</h2>
                   <p className="text-sm text-muted-foreground">
-                    Generate one to publish the verified timeline and QR code for buyers.
+                    {t("passport.noPassportDesc")}
                   </p>
                 </div>
                 <Button className="h-12 rounded-2xl sm:px-8" onClick={generate}>
-                  <FileText className="size-5" /> Generate passport
+                  <FileText className="size-5" /> {t("passport.generate")}
                 </Button>
               </>
             )}
@@ -157,17 +159,17 @@ function PassportPage() {
 
         <section className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div className="card-soft p-6">
-            <h2 className="text-lg font-semibold">Crop identity</h2>
+            <h2 className="text-lg font-semibold">{t("passport.cropIdentity")}</h2>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               {[
-                ["Farmer", crop.farmer],
-                ["Farm", crop.farmName],
-                ["Category", crop.category],
-                ["Farm size", crop.area],
-                ["GPS", crop.gps || "Not provided"],
-                ["Growth stage", crop.stage],
-                ["Planted on", formatDate(crop.plantedOn)],
-                ["Expected harvest", formatDate(crop.harvestOn)],
+                [t("passport.farmer"), crop.farmer],
+                [t("passport.farm"), crop.farmName],
+                [t("passport.category"), crop.category],
+                [t("passport.farmSize"), crop.area],
+                [t("passport.gps"), crop.gps || t("passport.notProvided")],
+                [t("passport.growthStage"), crop.stage],
+                [t("passport.plantedOn"), formatDate(crop.plantedOn, locale)],
+                [t("passport.expectedHarvest"), formatDate(crop.harvestOn, locale)],
               ].map(([label, value]) => (
                 <div key={label} className="min-w-0">
                   <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -179,13 +181,13 @@ function PassportPage() {
 
           <div className="card-soft grid place-items-center gap-3 p-6 text-center">
             <QrCode value={crop.id} />
-            <p className="text-xs text-muted-foreground">Scan to verify this harvest</p>
+            <p className="text-xs text-muted-foreground">{t("passport.scanToVerify")}</p>
             <div className="flex w-full gap-2">
               <Button variant="secondary" className="flex-1 rounded-2xl" onClick={copyPassportLink}>
-                <Share2 className="size-4" /> Share
+                <Share2 className="size-4" /> {t("passport.share")}
               </Button>
               <Button variant="outline" className="flex-1 rounded-2xl" onClick={printPassport}>
-                <Download className="size-4" /> PDF
+                <Download className="size-4" /> {t("passport.pdf")}
               </Button>
             </div>
           </div>
@@ -194,9 +196,9 @@ function PassportPage() {
         <section className="card-soft mt-4 grid gap-4 p-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
           <ScoreRing score={crop.score} size={84} />
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold">Traceability score</h2>
+            <h2 className="text-lg font-semibold">{t("passport.traceabilityScore")}</h2>
             <p className="text-sm text-muted-foreground">
-              Based on documentation frequency, media evidence and origin verification.
+              {t("passport.scoreDesc")}
             </p>
             <Progress value={crop.score} className="mt-3 h-2.5" />
           </div>
@@ -204,28 +206,32 @@ function PassportPage() {
 
         <section className="card-soft mt-4 border-gold/40 bg-gold/10 p-6">
           <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">
-            <Sparkles className="size-3" /> AI traceability summary
+            <Sparkles className="size-3" /> {t("passport.aiSummaryBadge")}
           </Badge>
           <p className="mt-3 text-sm leading-relaxed">
-            This {crop.variety.toLowerCase()} was grown at {crop.farmName} in {crop.location} on{" "}
-            {crop.area}. The farmer documented {timeline.length} verified field activities from
-            planting on {formatDate(crop.plantedOn)} through the current {crop.stage.toLowerCase()}{" "}
-            stage, supported by photo and voice evidence. No synthetic chemical applications were
-            recorded.
+            {t("passport.aiSummaryText", {
+              variety: crop.variety.toLowerCase(),
+              farm: crop.farmName,
+              location: crop.location,
+              area: crop.area,
+              count: timeline.length,
+              planted: formatDate(crop.plantedOn, locale),
+              stage: crop.stage.toLowerCase(),
+            })}
           </p>
         </section>
 
         <section className="mt-8">
-          <h2 className="text-lg font-semibold">Cultivation timeline</h2>
+          <h2 className="text-lg font-semibold">{t("passport.cultivationTimeline")}</h2>
           <p className="mb-5 text-sm text-muted-foreground">
-            Read-only record of every documented field activity.
+            {t("passport.timelineDesc")}
           </p>
           <Timeline items={timeline} />
         </section>
 
         <footer className="mt-10 flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Leaf className="size-4 text-primary" />
-          Verified with HarvestID · Every harvest has an identity
+          {t("passport.footer")}
         </footer>
       </div>
 
@@ -234,10 +240,10 @@ function PassportPage() {
           <DialogHeader>
             <span className="mx-auto text-6xl animate-in zoom-in duration-500">🎉</span>
             <DialogTitle className="mt-2 text-center font-display text-2xl">
-              Harvest Passport Ready!
+              {t("passport.readyTitle")}
             </DialogTitle>
             <DialogDescription className="text-center">
-              {crop.name} now has a verifiable digital identity buyers can scan.
+              {t("passport.readyDesc", { name: crop.name })}
             </DialogDescription>
           </DialogHeader>
           <div className="mx-auto"><QrCode value={crop.id} size={140} /></div>
@@ -249,13 +255,13 @@ function PassportPage() {
                 setCelebrate(false);
               }}
             >
-              Download PDF
+              {t("passport.downloadPdf")}
             </Button>
             <Button variant="secondary" className="rounded-2xl" onClick={copyPassportLink}>
-              Share QR
+              {t("passport.shareQr")}
             </Button>
             <Button variant="outline" className="rounded-2xl" onClick={() => setCelebrate(false)}>
-              View passport
+              {t("passport.viewPassport")}
             </Button>
           </div>
         </DialogContent>

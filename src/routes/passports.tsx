@@ -5,6 +5,7 @@ import { QrCode } from "@/components/QrCode";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useHarvest } from "@/lib/harvest-store";
+import { useI18n } from "@/i18n";
 
 export const Route = createFileRoute("/passports")({
   head: () => ({
@@ -23,12 +24,13 @@ export const Route = createFileRoute("/passports")({
 
 function PassportsPage() {
   const { crops } = useHarvest();
+  const { t } = useI18n();
 
   return (
-    <AppLayout title="Passports" subtitle="Buyer-ready crop identities">
-      <h2 className="font-display text-2xl font-semibold">Digital crop passports</h2>
+    <AppLayout title={t("passports.title")} subtitle={t("passports.subtitle")}>
+      <h2 className="font-display text-2xl font-semibold">{t("passports.heading")}</h2>
       <p className="text-sm text-muted-foreground">
-        Each passport is a read-only page buyers open by scanning a QR code.
+        {t("passports.tagline")}
       </p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -48,10 +50,10 @@ function PassportsPage() {
               >
                 {c.passport ? (
                   <>
-                    <ShieldCheck className="size-3" /> Issued
+                    <ShieldCheck className="size-3" /> {t("passports.issued")}
                   </>
                 ) : (
-                  "Pending"
+                  t("passports.pending")
                 )}
               </Badge>
               <h3 className="mt-2 truncate text-lg font-semibold">{c.name}</h3>
@@ -61,7 +63,7 @@ function PassportsPage() {
               <Button asChild className="mt-3 w-full rounded-2xl">
                 <Link to="/passport/$cropId" params={{ cropId: c.id }}>
                   <FileText className="size-4" />
-                  {c.passport ? "Open passport" : "Generate passport"}
+                  {c.passport ? t("passports.openPassport") : t("passports.generatePassport")}
                 </Link>
               </Button>
             </div>
