@@ -202,7 +202,10 @@ export function FarmerAssistant() {
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
-  const autoSpeak = useSyncExternalStore(subscribeAutoSpeak, getAutoSpeak);
+  // getAutoSpeak doubles as getServerSnapshot: it is SSR-safe (returns false on
+  // the server), and React 19 throws during server rendering when
+  // useSyncExternalStore is called without a getServerSnapshot.
+  const autoSpeak = useSyncExternalStore(subscribeAutoSpeak, getAutoSpeak, getAutoSpeak);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
