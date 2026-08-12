@@ -4,14 +4,28 @@
 // never shipped to the browser. The frontend calls POST /api/chat; this
 // controller forwards the farmer's question to Google Gemini and asks it to
 // reply in the farmer's selected language.
+//
+// Model handling is defensive on purpose: Google retires models over time
+// (gemini-1.5-flash was retired in Sept 2025), so the controller tries an
+// ordered list and falls through to the next model whenever Google returns a
+// 404. The list can be overridden with the GEMINI_MODEL env var (comma
+// separated, e.g. "gemini-3.6-flash,gemini-2.5-flash") without a code change.
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
-// Ordered model list. gemini-2.5-flash is the current stable price/performance
-// model for low-latency text tasks. If a model is ever retired (gemini-1.5-flash
-// was retired in Sept 2025), we fall back to the next one so the assistant
-// keeps working without an emergency redeploy.
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash-lite"];
 const REQUEST_TIMEOUT_MS = 45_000;
+const MODEL_LIST_TIMEOUT_MS = 6_000;
+
+function resolveGeminiModels() {
+  const fromEnv = process.env.GEMINI_MODEL;
+  if (typeof fromEnv === "string" && fromEnv.trim()) {
+    const models = fromEnv
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean);
+    if (models.length) return models;
+  }
+  return ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"];
+}
 
 const LANGUAGE_NAMES = {
   en: "English",
@@ -73,21 +87,34 @@ function buildSystemPrompt(lang, context) {
   return parts.join("\n");
 }
 
+/** Strip anything that looks like an API key from a provider message. */
+function sanitizeDetail(value) {
+  if (typeof value !== "string") return "";
+  const redacted = value
+    // Common key shapes: AIza..., 30+ char base64-ish tokens, urlencoded keys.
+    .replace(/AIza[a-zA-Z0-9_-]{10,}/g, "[REDACTED_KEY]")
+    .replace(/(key|apikey|api[_-]?key)=([^&\s"']+)/gi, "$1=[REDACTED]")
+    .replace(/[a-zA-Z0-9_-]{28,}/g, "[REDACTED_TOKEN]");
+  return redacted.length > 300 ? `${redacted.slice(0, 300)}…` : redacted;
+}
+
 /** Error that maps to an HTTP response; the message never contains secrets. */
 class AiProviderError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, detail = "") {
     super(message);
     this.name = "AiProviderError";
     this.status = status;
     this.code = code;
+    this.detail = sanitizeDetail(detail);
   }
 }
 
 async function chatWithGemini(apiKey, prompt) {
   const doFetch = typeof globalThis.fetch === "function" ? globalThis.fetch : require("node-fetch");
+  const models = resolveGeminiModels();
 
   let lastError = null;
-  for (const model of GEMINI_MODELS) {
+  for (const model of models) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
@@ -110,19 +137,21 @@ async function chatWithGemini(apiKey, prompt) {
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");
+        const providerDetail = `model=${model} status=${response.status} ${body.slice(0, 500)}`;
 
-        // A retired/unknown model — try the next one in the list.
-        if (response.status === 404 && /not found|not supported/i.test(body)) {
-          lastError = new AiProviderError(404, "model_not_found", `AI model ${model} is unavailable.`);
+        // Any 404 from Google means the model is not usable with this key —
+        // try the next model regardless of the exact message.
+        if (response.status === 404) {
+          lastError = new AiProviderError(404, "model_not_found", `AI model ${model} is not available.`, providerDetail);
           continue;
         }
         if (response.status === 429) {
-          throw new AiProviderError(429, "rate_limited", "The AI service is busy (rate limit). Please try again in a moment.");
+          throw new AiProviderError(429, "rate_limited", "The AI service is busy (rate limit). Please try again in a moment.", providerDetail);
         }
         if (response.status === 400 && /api key|invalid|unauthorized|permission/i.test(body)) {
-          throw new AiProviderError(502, "invalid_api_key", "The AI service rejected the configured API key. Check GOOGLE_API_KEY on the server.");
+          throw new AiProviderError(502, "invalid_api_key", "The AI service rejected the configured API key. Check GOOGLE_API_KEY on the server.", providerDetail);
         }
-        throw new AiProviderError(response.status, "provider_error", `The AI service returned an error (${response.status}).`);
+        throw new AiProviderError(response.status, "provider_error", `The AI service returned an error (${response.status}).`, providerDetail);
       }
 
       const payload = await response.json();
@@ -146,8 +175,54 @@ async function chatWithGemini(apiKey, prompt) {
     }
   }
 
-  if (lastError) throw lastError;
+  if (lastError) {
+    // All models failed — give an actionable, safe diagnostic instead of the
+    // generic 404 so the real problem (key access / region / availability) is
+    // visible. Never include the key itself.
+    if (lastError.code === "model_not_found") {
+      throw new AiProviderError(
+        404,
+        "model_not_found",
+        `AI provider model not available. Tried: ${models.join(", ")}.`,
+        lastError.detail,
+      );
+    }
+    throw lastError;
+  }
   throw new AiProviderError(502, "provider_error", "The AI service is unavailable. Please try again.");
+}
+
+/** Which text models the configured key can actually see (server-side only). */
+async function listAvailableModels(apiKey) {
+  const doFetch = typeof globalThis.fetch === "function" ? globalThis.fetch : require("node-fetch");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), MODEL_LIST_TIMEOUT_MS);
+  try {
+    const response = await doFetch(
+      `${GEMINI_BASE_URL}/models?key=${encodeURIComponent(apiKey)}&pageSize=1000`,
+      { signal: controller.signal },
+    );
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      return { models: null, detail: sanitizeDetail(`status=${response.status} ${body.slice(0, 300)}`) };
+    }
+    const payload = await response.json();
+    const names = Array.isArray(payload?.models)
+      ? payload.models
+          .filter(
+            (m) =>
+              Array.isArray(m?.supportedGenerationMethods) &&
+              m.supportedGenerationMethods.includes("generateContent"),
+          )
+          .map((m) => (typeof m?.name === "string" ? m.name.replace(/^models\//, "") : null))
+          .filter((n) => n)
+      : [];
+    return { models: [...new Set(names)].sort(), detail: "" };
+  } catch (err) {
+    return { models: null, detail: sanitizeDetail(err instanceof Error ? err.message : "model list failed") };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function chat(req, res) {
@@ -179,16 +254,31 @@ async function chat(req, res) {
   } catch (err) {
     console.error("[ai] chat failed:", err);
     const status = err instanceof AiProviderError && err.status ? err.status : 502;
-    return res.status(status).json({
+    const payload = {
       success: false,
       error: err instanceof Error ? err.message : "AI assistant failed",
-    });
+    };
+    // Safe diagnostic detail (never the key) for debugging via curl/API.
+    if (err instanceof AiProviderError && err.detail) payload.detail = err.detail;
+    return res.status(status).json(payload);
   }
 }
 
 // Debug endpoint for production configuration. Never exposes the API key.
-function health(req, res) {
-  res.json({ success: true, configured: Boolean(process.env.GOOGLE_API_KEY) });
+// Reports whether the key is set and — when it is — which models that key can
+// actually use, so model/region availability problems are visible immediately.
+async function health(req, res) {
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    return res.json({ success: true, configured: false });
+  }
+  const { models, detail } = await listAvailableModels(apiKey);
+  return res.json({
+    success: true,
+    configured: true,
+    models: models ?? undefined,
+    modelDetail: detail || undefined,
+  });
 }
 
 module.exports = { chat, health };
