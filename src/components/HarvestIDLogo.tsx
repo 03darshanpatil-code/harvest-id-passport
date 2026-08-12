@@ -1,49 +1,38 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Reusable HarvestID brand logo. One official asset (public/logo/harvestid-mark.svg)
- * is used everywhere; the wordmark is typeset in the brand font so it scales
- * crisply and follows the active theme (text-foreground in light/dark modes).
+ * Reusable HarvestID brand logo. Renders the single official asset
+ * (public/logo/harvestID logo.jpeg) everywhere — one source of truth,
+ * no duplicate or derived logos. The official mark is square, so the
+ * width/height sizing preserves its exact proportions.
  */
 export function HarvestIDLogo({
   variant = "icon",
   size = 36,
   decorative = false,
   className,
-  wordmarkClassName,
+  imgClassName,
 }: {
-  /** "icon" renders only the mark; "full" adds the HarvestID wordmark. */
+  /** "icon" renders the compact mark; "full" is the same official logo sized up for header/sidebar use. */
   variant?: "icon" | "full";
-  /** Height of the mark in px; the wordmark scales proportionally. */
+  /** Size of the logo in px (the official asset is square, so aspect ratio is preserved). */
   size?: number;
   /** True when this instance is a decorative duplicate (hidden from screen readers). */
   decorative?: boolean;
   className?: string;
-  wordmarkClassName?: string;
+  imgClassName?: string;
 }) {
   return (
-    <span className={cn("inline-flex shrink-0 items-center gap-2", className)}>
+    <span className={cn("inline-flex shrink-0 items-center", className)}>
       <img
-        src="/logo/harvestid-mark.svg"
-        alt={decorative ? "" : "HarvestID"}
+        src="/logo/harvestID logo.jpeg"
+        alt={decorative ? "" : "HarvestID logo"}
         aria-hidden={decorative || undefined}
         width={size}
         height={size}
         draggable={false}
-        className="shrink-0"
+        className={cn("shrink-0 object-contain", imgClassName)}
       />
-      {variant === "full" ? (
-        <span
-          aria-hidden={decorative || undefined}
-          className={cn(
-            "whitespace-nowrap font-display font-semibold leading-none tracking-tight text-foreground",
-            wordmarkClassName,
-          )}
-          style={{ fontSize: Math.max(12, Math.round(size * 0.52)) }}
-        >
-          HarvestID
-        </span>
-      ) : null}
     </span>
   );
 }

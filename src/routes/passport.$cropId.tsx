@@ -116,12 +116,7 @@ function PassportPage() {
         />
         <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/35 to-transparent" />
         <div className="absolute left-4 top-4 sm:left-6 sm:top-6">
-          <HarvestIDLogo
-            variant="full"
-            size={28}
-            wordmarkClassName="text-white"
-            className="[&_img]:rounded-xl [&_img]:shadow-md"
-          />
+          <HarvestIDLogo variant="full" size={32} />
         </div>
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-6 sm:px-6">
           <Badge className="gap-1 rounded-full bg-gold text-gold-foreground hover:bg-gold">

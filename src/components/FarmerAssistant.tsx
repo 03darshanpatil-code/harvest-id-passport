@@ -494,9 +494,6 @@ export function FarmerAssistant() {
               <div className="rounded-2xl border border-gold/40 bg-gold/10 p-3.5 text-sm leading-relaxed">
                 <div className="mb-2 flex items-center gap-2">
                   <HarvestIDLogo size={22} decorative />
-                  <span className="font-display text-xs font-semibold uppercase tracking-wide text-gold-foreground">
-                    HarvestID
-                  </span>
                 </div>
                 <p className="flex items-start gap-1.5">
                   <Sparkles className="mt-0.5 size-4 shrink-0 text-gold" />
